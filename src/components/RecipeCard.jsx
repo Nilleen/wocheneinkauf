@@ -1,0 +1,106 @@
+import { useState, useRef } from 'react';
+import { FLAGS, PROTEINS } from '../constants.js';
+import { getSel, detectProtein, formatPrice, weekShort, haptic } from '../utils.js';
+import { showToast } from '../toast.js';
+import { ProteinTag, StarRating, WeekChip } from './SmallComponents.jsx';
+
+export default function RecipeCard({ recipe, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onOpenRecipe, onLongPress }) {
+  const sel    = getSel(sels, recipe.key);
+  const isSel  = sel.selected;
+  const ptype  = detectProtein(recipe);
+  const p      = PROTEINS[ptype];
+  const isFav  = !!profile?.favourites?.[recipe.key];
+  const rating = profile?.ratings?.[recipe.key] || 0;
+  const lastCooked = profile?.lastCooked?.[recipe.key];
+  const done   = recipe.ingredients.filter(i => ingState[i.id]?.status === "full").length;
+  const pct    = recipe.ingredients.length ? Math.round((done / recipe.ingredients.length) * 100) : 0;
+  const price  = FLAGS.priceEstimates ? formatPrice(recipe, pantryInventory) : null;
+  const [flash, setFlash] = useState("");
+  const longPressTimer = useRef();
+  const startX = useRef(0);
+  const moved  = useRef(false);
+
+  const handleTouchStart = e => {
+    startX.current = e.touches[0].clientX;
+    moved.current  = false;
+    longPressTimer.current = setTimeout(() => { haptic([10, 30, 10]); onLongPress && onLongPress(recipe); }, 600);
+  };
+  const handleTouchMove = e => {
+    const dx = Math.abs(e.touches[0].clientX - startX.current);
+    if (dx > 10) { moved.current = true; clearTimeout(longPressTimer.current); }
+  };
+  const handleTouchEnd = e => {
+    clearTimeout(longPressTimer.current);
+    if (!moved.current) return;
+    const dx = e.changedTouches[0].clientX - startX.current;
+    if (FLAGS.swipeGestures && Math.abs(dx) > 50) {
+      if (dx > 0 && !isSel)  { onToggleSel(recipe.key); setFlash("flash-green"); haptic(12); showToast("✓ Rezept ausgewählt"); setTimeout(() => setFlash(""), 400); }
+      else if (dx < 0 && isSel) { onToggleSel(recipe.key); setFlash("flash-red");  haptic(12); showToast("✗ Rezept abgewählt");  setTimeout(() => setFlash(""), 400); }
+    }
+  };
+
+  return (
+    <div className={`card ${flash}`} style={{ transition: "transform .15s" }}
+      onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+      {recipe.photo && (
+        <div style={{ height: 160, overflow: "hidden", position: "relative", cursor: "pointer" }} onClick={() => onOpenRecipe(recipe)}>
+          <img src={recipe.photo} alt={recipe.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 35%" }}/>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.5))" }}/>
+          <span style={{ position: "absolute", bottom: 10, left: 12, fontSize: 20 }}>{recipe.emoji}</span>
+          <span className="ptag" style={{ position: "absolute", top: 10, left: 10, background: p.color }}>{p.emoji} {p.label}</span>
+          {recipe.kcal && <span style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,.45)", color: "#fff", borderRadius: 10, padding: "3px 8px", fontSize: 11 }}>🔥 {recipe.kcal}</span>}
+        </div>
+      )}
+      <div style={{ display: "flex", alignItems: "stretch" }}>
+        <div style={{ width: 6, background: isSel ? recipe.color : "var(--bdr)", flexShrink: 0, transition: "background .3s" }}/>
+        <div style={{ padding: "12px 14px", flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
+            {!recipe.photo && <span style={{ fontSize: 22, flexShrink: 0 }}>{recipe.emoji}</span>}
+            <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => onOpenRecipe(recipe)}>
+              <div style={{ fontSize: 15, fontWeight: "bold", color: "var(--tx)", marginBottom: 2, lineHeight: 1.3 }}>{recipe.name}</div>
+              {!recipe.photo && <ProteinTag type={ptype}/>}
+              <div style={{ fontSize: 11, color: "var(--tx2)", marginTop: 2 }}>
+                {recipe.difficulty}
+                {FLAGS.prepCookSplit && recipe.prepMins ? ` · ✋ ${recipe.prepMins} · 🔥 ${recipe.cookMins} Min` : ` · ⏱ ${recipe.time}`}
+                {recipe.kcal ? ` · 🔥 ${recipe.kcal}` : ""}
+              </div>
+            </div>
+            <button className="btn" onClick={() => onToggleFav(recipe.key)}
+              style={{ fontSize: 20, background: "none", padding: "0 4px", color: isFav ? "#f0a500" : "var(--tx3)", flexShrink: 0 }}>
+              {isFav ? "⭐" : "☆"}
+            </button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+            {rating > 0 && <StarRating value={rating} size={12}/>}
+            {lastCooked && <span style={{ fontSize: 10, color: "var(--tx3)" }}>Zuletzt {weekShort(lastCooked)}</span>}
+            {isSel && <WeekChip wid={currentWeekId}/>}
+            {price && <span style={{ fontSize: 10, color: "var(--ac)", background: "var(--acbg)", padding: "2px 6px", borderRadius: 8 }}>{price}</span>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ flex: 1, height: 4, background: "var(--bdr)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${pct}%`, background: recipe.color, transition: "width .4s" }}/>
+            </div>
+            <span style={{ fontSize: 11, color: "var(--tx3)", flexShrink: 0 }}>{done}/{recipe.ingredients.length}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button className={`btn${FLAGS.springAnimations ? " pulse-select" : ""}`}
+              onClick={() => { onToggleSel(recipe.key); haptic(12); if (!isSel) showToast("✓ Rezept ausgewählt"); }}
+              style={{ flex: 1, padding: "7px 12px", borderRadius: 10, fontSize: 13, fontWeight: "bold", background: isSel ? recipe.color : "var(--sur2)", color: isSel ? "#fff" : "var(--tx2)", border: `1.5px solid ${isSel ? recipe.color : "var(--bdr)"}` }}>
+              {isSel ? "✓ Ausgewählt" : "+ Auswählen"}
+            </button>
+            {isSel && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--sur2)", borderRadius: 10, padding: "5px 10px", border: "1px solid var(--bdr)" }}>
+                <button className="btn" onClick={() => onServChange(recipe.key, Math.max(1, sel.servings - 1))}
+                  style={{ fontSize: 16, background: "none", color: "var(--tx2)", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                <span style={{ fontSize: 13, minWidth: 20, textAlign: "center", color: "var(--tx)", fontWeight: "bold" }}>{sel.servings}</span>
+                <button className="btn" onClick={() => onServChange(recipe.key, Math.min(10, sel.servings + 1))}
+                  style={{ fontSize: 16, background: "none", color: "var(--tx2)", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                <span style={{ fontSize: 10, color: "var(--tx3)" }}>P</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

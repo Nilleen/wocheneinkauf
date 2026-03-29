@@ -1,6 +1,12 @@
 [build]
-  publish = "."
-  command = ""
+  command   = "npm ci && npm run build"
+  publish   = "dist"
+
+  # Only deploy when the commit is an exact git tag (e.g. v1.0).
+  # Exit 0 = skip build.  Exit non-zero = proceed with build.
+  # "! git describe --exact-match HEAD" exits 1 (non-zero) when tagged → build runs.
+  #                                      exits 0 when NOT tagged         → build skipped.
+  ignore = "! git describe --exact-match HEAD 2>/dev/null"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
