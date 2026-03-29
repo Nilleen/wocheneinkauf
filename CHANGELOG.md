@@ -15,10 +15,18 @@ Releases are triggered by pushing a git tag: `git tag v1.x && git push --tags`
 - PWA support: `manifest.json`, `sw.js` (cache-first service worker), `icon.svg`
 - GitHub Actions workflow: auto-creates GitHub Release + changelog on tag push
 - Netlify tag-only deploys: pushes to `master` no longer trigger a build
+- Day assignment (Mo–So) per recipe — plan which recipe you cook on which day
+- "Aus Vorrat kochbar" filter in recipe view — shows recipes where ≥70% of ingredients are stocked
+- Offline indicator banner — notifies when device is offline
+- Price now includes ALL ingredients (incl. pantry staples), scales with selected portion count
+- Price note clarifies estimate is for all ingredients regardless of pantry
 
 ### Changed
 - Firebase SDK migrated from CDN compat scripts to npm modular SDK (`firebase@10`)
 - `index.html` is now a clean Vite entry shell
+- Serving counter `−`/`+` buttons have larger tap targets (30×30px minimum)
+- Week navigation arrows `‹`/`›` have larger tap targets (36×32px minimum)
+- Price label in recipe cards now shows 💰 and includes all ingredients
 
 ---
 

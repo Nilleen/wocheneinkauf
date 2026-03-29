@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react';
-import { FLAGS, PROTEINS } from '../constants.js';
+import { FLAGS, PROTEINS, DAYS } from '../constants.js';
 import { getSel, detectProtein, formatPrice, weekShort, haptic } from '../utils.js';
 import { showToast } from '../toast.js';
 import { ProteinTag, StarRating, WeekChip } from './SmallComponents.jsx';
 
-export default function RecipeCard({ recipe, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onOpenRecipe, onLongPress }) {
+export default function RecipeCard({ recipe, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onDayChange, onOpenRecipe, onLongPress }) {
   const sel    = getSel(sels, recipe.key);
   const isSel  = sel.selected;
+  const servings = sel.servings || 2;
   const ptype  = detectProtein(recipe);
   const p      = PROTEINS[ptype];
   const isFav  = !!profile?.favourites?.[recipe.key];
@@ -14,7 +15,7 @@ export default function RecipeCard({ recipe, ingState, sels, profile, currentWee
   const lastCooked = profile?.lastCooked?.[recipe.key];
   const done   = recipe.ingredients.filter(i => ingState[i.id]?.status === "full").length;
   const pct    = recipe.ingredients.length ? Math.round((done / recipe.ingredients.length) * 100) : 0;
-  const price  = FLAGS.priceEstimates ? formatPrice(recipe, pantryInventory) : null;
+  const price  = FLAGS.priceEstimates ? formatPrice(recipe, servings) : null;
   const [flash, setFlash] = useState("");
   const longPressTimer = useRef();
   const startX = useRef(0);
@@ -74,7 +75,17 @@ export default function RecipeCard({ recipe, ingState, sels, profile, currentWee
             {rating > 0 && <StarRating value={rating} size={12}/>}
             {lastCooked && <span style={{ fontSize: 10, color: "var(--tx3)" }}>Zuletzt {weekShort(lastCooked)}</span>}
             {isSel && <WeekChip wid={currentWeekId}/>}
-            {price && <span style={{ fontSize: 10, color: "var(--ac)", background: "var(--acbg)", padding: "2px 6px", borderRadius: 8 }}>{price}</span>}
+            {isSel && sel.day && (
+              <span style={{ fontSize: 10, color: "var(--ac)", background: "var(--acbg)", padding: "2px 6px", borderRadius: 8, fontWeight: "bold" }}>
+                {DAYS.find(d => d.id === sel.day)?.label}
+              </span>
+            )}
+            {price && (
+              <span title="Geschätzte Gesamtkosten aller Zutaten inkl. Grundausstattung"
+                style={{ fontSize: 10, color: "var(--ac)", background: "var(--acbg)", padding: "2px 6px", borderRadius: 8 }}>
+                💰 {price}
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ flex: 1, height: 4, background: "var(--bdr)", borderRadius: 2, overflow: "hidden" }}>
@@ -90,15 +101,26 @@ export default function RecipeCard({ recipe, ingState, sels, profile, currentWee
             </button>
             {isSel && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--sur2)", borderRadius: 10, padding: "5px 10px", border: "1px solid var(--bdr)" }}>
-                <button className="btn" onClick={() => onServChange(recipe.key, Math.max(1, sel.servings - 1))}
-                  style={{ fontSize: 16, background: "none", color: "var(--tx2)", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                <span style={{ fontSize: 13, minWidth: 20, textAlign: "center", color: "var(--tx)", fontWeight: "bold" }}>{sel.servings}</span>
-                <button className="btn" onClick={() => onServChange(recipe.key, Math.min(10, sel.servings + 1))}
-                  style={{ fontSize: 16, background: "none", color: "var(--tx2)", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                <button className="btn" onClick={() => { haptic(8); onServChange(recipe.key, Math.max(1, servings - 1)); }}
+                  style={{ fontSize: 18, background: "none", color: "var(--tx)", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                <span style={{ fontSize: 13, minWidth: 22, textAlign: "center", color: "var(--tx)", fontWeight: "bold" }}>{servings}</span>
+                <button className="btn" onClick={() => { haptic(8); onServChange(recipe.key, Math.min(10, servings + 1)); }}
+                  style={{ fontSize: 18, background: "none", color: "var(--tx)", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                 <span style={{ fontSize: 10, color: "var(--tx3)" }}>P</span>
               </div>
             )}
           </div>
+          {isSel && onDayChange && (
+            <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+              {DAYS.map(d => (
+                <button key={d.id} className="btn"
+                  onClick={() => { haptic(8); onDayChange(recipe.key, sel.day === d.id ? null : d.id); }}
+                  style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, fontWeight: sel.day === d.id ? "bold" : "normal", background: sel.day === d.id ? recipe.color : "var(--sur2)", color: sel.day === d.id ? "#fff" : "var(--tx3)", border: `1px solid ${sel.day === d.id ? recipe.color : "var(--bdr)"}`, minWidth: 32, textAlign: "center" }}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

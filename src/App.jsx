@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useReducer, useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { FLAGS, SEED } from './constants.js';
 import { weekId, weekLabel, weekShort, getSel, fromFB, buildInit, buildDefSel, normIngName, normShop, haptic } from './utils.js';
 import { FB } from './firebase.js';
@@ -51,7 +51,17 @@ async function runMigration() {
 
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const lw = useRef(false);
+
+  // ── Online/offline detection ──
+  useEffect(() => {
+    const on  = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online",  on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
 
   // ── Dark mode ──
   useEffect(() => {
@@ -171,6 +181,13 @@ export default function App() {
     FB.set(`${FB.weekSel(state.weekId)}/${key}`, next);
   }, [state.sels, state.weekId]);
 
+  const changeDay = useCallback((key, day) => {
+    const cur  = getSel(state.sels, key);
+    const next = { ...cur, day: day || null };
+    dispatch({ type: "PATCH_SEL", key, patch: { day: day || null } });
+    FB.set(`${FB.weekSel(state.weekId)}/${key}`, next);
+  }, [state.sels, state.weekId]);
+
   const toggleFav = useCallback((key) => {
     const next = !state.profile.favourites?.[key];
     dispatch({ type: "SET_FAV", key, v: next });
@@ -271,7 +288,7 @@ export default function App() {
       {state.showAddRecipe && <AddRecipeModal onSave={handleAddRecipe} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showAddRecipe" })}/>}
       {state.showThisWeek && (
         <ThisWeekModal recipes={recipes} sels={sels} ingState={ingState} weekId={wid}
-          onServChange={changeServings} onToggleSel={toggleSel}
+          onServChange={changeServings} onDayChange={changeDay} onToggleSel={toggleSel}
           onClearAll={() => { recipes.forEach(r => { if (getSel(sels, r.key).selected) toggleSel(r.key); }); dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" }); }}
           onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" })}
           onOpenRecipe={r => { dispatch({ type: "OPEN_RECIPE", recipe: r }); dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" }); }}/>
@@ -293,10 +310,12 @@ export default function App() {
             <div>
               <h1 style={{ color: "var(--ht)", margin: 0, fontSize: 16, fontWeight: "normal" }}>🛒 Wocheneinkauf</h1>
               {FLAGS.weekNav && (
-                <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-                  <button className="btn" onClick={() => navigateWeek(-1)} style={{ fontSize: 13, color: "var(--hs)", background: "none", padding: "0 3px", lineHeight: 1 }}>‹</button>
-                  <span style={{ fontSize: 11, color: "var(--hs)" }}>{weekShort(wid)}</span>
-                  <button className="btn" onClick={() => navigateWeek(1)}  style={{ fontSize: 13, color: "var(--hs)", background: "none", padding: "0 3px", lineHeight: 1 }}>›</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 2 }}>
+                  <button className="btn" onClick={() => navigateWeek(-1)}
+                    style={{ fontSize: 20, color: "var(--hs)", background: "none", padding: "2px 8px", lineHeight: 1, minWidth: 36, minHeight: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
+                  <span style={{ fontSize: 11, color: "var(--hs)", minWidth: 36, textAlign: "center" }}>{weekShort(wid)}</span>
+                  <button className="btn" onClick={() => navigateWeek(1)}
+                    style={{ fontSize: 20, color: "var(--hs)", background: "none", padding: "2px 8px", lineHeight: 1, minWidth: 36, minHeight: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: sc, display: "inline-block", marginLeft: 4 }} className={(sync === "connecting" || sync === "syncing") ? "pls" : ""}/>
                 </div>
               )}
@@ -329,6 +348,9 @@ export default function App() {
         </div>
       </div>
 
+      {!isOnline && (
+        <div style={{ background: "#555", color: "#fff", padding: "8px 16px", fontSize: 12, textAlign: "center", flexShrink: 0 }}>📴 Offline — Änderungen werden gespeichert sobald du wieder verbunden bist</div>
+      )}
       {state.showPWA && (
         <div style={{ background: "var(--ac)", color: "#fff", padding: "10px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <span style={{ flex: 1 }}>📲 Zum Startbildschirm: Teilen → "Zum Home-Bildschirm"</span>
@@ -353,6 +375,7 @@ export default function App() {
               <RecipesView recipes={recipes} ingState={ingState} sels={sels} profile={profile}
                 currentWeekId={wid} pantryInventory={pantryInventory}
                 onToggleSel={toggleSel} onToggleFav={toggleFav} onServChange={changeServings}
+                onDayChange={changeDay}
                 onOpenRecipe={r => dispatch({ type: "OPEN_RECIPE", recipe: r })}/>
             )}
             {state.view === "checklist" && (

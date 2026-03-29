@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { FLAGS } from '../constants.js';
-import { getSel, weekLabel, estimateRecipePrice } from '../utils.js';
+import { FLAGS, DAYS } from '../constants.js';
+import { getSel, weekLabel, estimateRecipePrice, haptic } from '../utils.js';
 
-export default function ThisWeekModal({ recipes, sels, ingState, weekId, onServChange, onToggleSel, onClearAll, onClose, onOpenRecipe }) {
+export default function ThisWeekModal({ recipes, sels, ingState, weekId, onServChange, onDayChange, onToggleSel, onClearAll, onClose, onOpenRecipe }) {
   const [tab, setTab] = useState("overview");
   const selRecipes = recipes.filter(r => getSel(sels, r.key).selected);
-  const priceTotal = selRecipes.reduce((sum, r) => { const { total } = estimateRecipePrice(r); return sum + total; }, 0);
+  const priceTotal = selRecipes.reduce((sum, r) => {
+    const servings = getSel(sels, r.key).servings || 2;
+    const { total } = estimateRecipePrice(r, servings);
+    return sum + total;
+  }, 0);
   const totalKcal  = selRecipes.reduce((s, r) => s + (r.kcal || 0) * (getSel(sels, r.key).servings || 2) / 2, 0);
   const avgKcalDay = Math.round(totalKcal / 7);
   const maxKcal    = totalKcal > 3500 ? "high" : totalKcal > 2000 ? "ok" : "low";
@@ -45,37 +49,54 @@ export default function ThisWeekModal({ recipes, sels, ingState, weekId, onServC
               <>
                 {selRecipes.map(recipe => {
                   const sel = getSel(sels, recipe.key);
+                  const servings = sel.servings || 2;
                   return (
-                    <div key={recipe.key} style={{ display: "flex", alignItems: "center", padding: "12px 20px", gap: 12, borderBottom: "1px solid var(--bdr2)" }}>
-                      <div style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}
-                        onClick={() => { onOpenRecipe(recipe); onClose(); }}>
-                        {recipe.photo
-                          ? <img src={recipe.photo} alt="" style={{ width: 46, height: 46, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}/>
-                          : <span style={{ fontSize: 26, flexShrink: 0 }}>{recipe.emoji}</span>}
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 14, color: "var(--ac)", fontWeight: "bold", lineHeight: 1.3 }}>{recipe.name}</div>
-                          <div style={{ fontSize: 11, color: "var(--tx2)", marginTop: 2 }}>
-                            {FLAGS.prepCookSplit && recipe.prepMins ? `✋ ${recipe.prepMins} · 🔥 ${recipe.cookMins} Min` : `⏱ ${recipe.time}`}
-                            {recipe.kcal ? ` · 🔥 ${recipe.kcal} kcal` : ""}
+                    <div key={recipe.key} style={{ borderBottom: "1px solid var(--bdr2)" }}>
+                      <div style={{ display: "flex", alignItems: "center", padding: "12px 20px", gap: 12 }}>
+                        <div style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}
+                          onClick={() => { onOpenRecipe(recipe); onClose(); }}>
+                          {recipe.photo
+                            ? <img src={recipe.photo} alt="" style={{ width: 46, height: 46, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}/>
+                            : <span style={{ fontSize: 26, flexShrink: 0 }}>{recipe.emoji}</span>}
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 14, color: "var(--ac)", fontWeight: "bold", lineHeight: 1.3 }}>{recipe.name}</div>
+                            <div style={{ fontSize: 11, color: "var(--tx2)", marginTop: 2 }}>
+                              {FLAGS.prepCookSplit && recipe.prepMins ? `✋ ${recipe.prepMins} · 🔥 ${recipe.cookMins} Min` : `⏱ ${recipe.time}`}
+                              {recipe.kcal ? ` · 🔥 ${recipe.kcal} kcal` : ""}
+                            </div>
                           </div>
                         </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                          <button className="btn" onClick={() => { haptic(8); onServChange(recipe.key, Math.max(1, servings - 1)); }}
+                            style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--sur2)", border: "1px solid var(--bdr)", fontSize: 18, color: "var(--tx)", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                          <span style={{ fontSize: 14, fontWeight: "bold", minWidth: 22, textAlign: "center", color: "var(--tx)" }}>{servings}</span>
+                          <button className="btn" onClick={() => { haptic(8); onServChange(recipe.key, Math.min(10, servings + 1)); }}
+                            style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--sur2)", border: "1px solid var(--bdr)", fontSize: 18, color: "var(--tx)", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                          <span style={{ fontSize: 10, color: "var(--tx3)", marginRight: 2 }}>P</span>
+                          <button className="btn" onClick={() => onToggleSel(recipe.key)} style={{ fontSize: 18, color: "var(--dan)", background: "none", padding: "0 3px" }}>✕</button>
+                        </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                        <button className="btn" onClick={() => onServChange(recipe.key, Math.max(1, sel.servings - 1))}
-                          style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--sur2)", border: "1px solid var(--bdr)", fontSize: 16, color: "var(--tx)", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                        <span style={{ fontSize: 14, fontWeight: "bold", minWidth: 20, textAlign: "center", color: "var(--tx)" }}>{sel.servings}</span>
-                        <button className="btn" onClick={() => onServChange(recipe.key, Math.min(10, sel.servings + 1))}
-                          style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--sur2)", border: "1px solid var(--bdr)", fontSize: 16, color: "var(--tx)", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                        <span style={{ fontSize: 10, color: "var(--tx3)", marginRight: 2 }}>P</span>
-                        <button className="btn" onClick={() => onToggleSel(recipe.key)} style={{ fontSize: 18, color: "var(--dan)", background: "none", padding: "0 3px" }}>✕</button>
-                      </div>
+                      {onDayChange && (
+                        <div style={{ display: "flex", gap: 4, padding: "0 20px 10px", flexWrap: "wrap" }}>
+                          {DAYS.map(d => (
+                            <button key={d.id} className="btn"
+                              onClick={() => { haptic(8); onDayChange(recipe.key, sel.day === d.id ? null : d.id); }}
+                              style={{ padding: "4px 8px", borderRadius: 8, fontSize: 11, fontWeight: sel.day === d.id ? "bold" : "normal", background: sel.day === d.id ? recipe.color : "var(--sur2)", color: sel.day === d.id ? "#fff" : "var(--tx3)", border: `1px solid ${sel.day === d.id ? recipe.color : "var(--bdr)"}`, minWidth: 32, textAlign: "center" }}>
+                              {d.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
                 {FLAGS.priceEstimates && (
-                  <div style={{ padding: "12px 20px", borderTop: "1px solid var(--bdr)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, color: "var(--tx2)" }}>💰 Geschätzte Kosten</span>
-                    <span style={{ fontSize: 15, fontWeight: "bold", color: "var(--ac)" }}>~€{priceTotal.toFixed(2)}*</span>
+                  <div style={{ padding: "12px 20px", borderTop: "1px solid var(--bdr)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, color: "var(--tx2)" }}>💰 Gesamtkosten (alle Zutaten)</span>
+                      <span style={{ fontSize: 15, fontWeight: "bold", color: "var(--ac)" }}>~€{priceTotal.toFixed(2)}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 3 }}>Schätzung inkl. Grundausstattung · skaliert auf gewählte Portionen · * = nicht alle Preise bekannt</div>
                   </div>
                 )}
               </>
@@ -122,7 +143,7 @@ export default function ThisWeekModal({ recipes, sels, ingState, weekId, onServC
                     </div>
                   );
                 })}
-                <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 12 }}>* Schätzwerte basierend auf 2 Portionen pro Rezept. Proteinschätzung ~5% der kcal.</div>
+                <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 12 }}>* Schätzwerte basierend auf gewählter Portionsanzahl. Proteinschätzung ~5% der kcal.</div>
               </>
             )}
           </div>

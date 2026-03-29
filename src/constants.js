@@ -99,6 +99,9 @@ export const REWE_PRICES = {
   "radieschen":0.79,"frühlingszwiebel":0.69,"lauch":0.89,
   "reis":0.99,"spaghetti":0.89,"penne":0.89,
   "tahini":2.49,"hummus":1.49,"pesto":1.99,
+  // pantry staples
+  "salz":0.49,"pfeffer":0.79,"zucker":0.69,"öl":1.49,"honig":2.49,
+  "wasser":0.00,"essig":0.89,"zitronensaft":0.59,
 };
 
 export const PROTEINS = {
@@ -108,6 +111,16 @@ export const PROTEINS = {
   chicken:    { emoji: "🍗", label: "Huhn",   color: "#c8a83a" },
   vegetarian: { emoji: "🥗", label: "Veggie", color: "#4a7c59" },
 };
+
+export const DAYS = [
+  { id: "mon", label: "Mo" },
+  { id: "tue", label: "Di" },
+  { id: "wed", label: "Mi" },
+  { id: "thu", label: "Do" },
+  { id: "fri", label: "Fr" },
+  { id: "sat", label: "Sa" },
+  { id: "sun", label: "So" },
+];
 
 export const SE = { none: "❌", partial: "⚠️", full: "✅" };
 export const SL = { none: "Fehlt", partial: "Teilweise", full: "Vorhanden" };

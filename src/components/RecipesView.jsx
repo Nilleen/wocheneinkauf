@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { FLAGS, PROTEINS } from '../constants.js';
-import { getSel, detectProtein, weekShort } from '../utils.js';
+import { getSel, detectProtein, weekShort, normIngName } from '../utils.js';
 import { FB } from '../firebase.js';
 import RecipeCard from './RecipeCard.jsx';
 import QuickRatingSheet from './QuickRatingSheet.jsx';
 
-export default function RecipesView({ recipes, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onOpenRecipe }) {
+export default function RecipesView({ recipes, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onDayChange, onOpenRecipe }) {
   const [q,            setQ]           = useState("");
   const [pFilter,      setPFilter]     = useState("all");
   const [diffFilter,   setDiffFilter]  = useState("all");
@@ -14,12 +14,22 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
   const [kcalFilter,   setKcalFilter]  = useState("all");
   const [sortBy,       setSortBy]      = useState("order");
   const [favOnly,      setFavOnly]     = useState(false);
+  const [pantryReady,  setPantryReady] = useState(false);
   const [longPressRecipe, setLongPressRecipe] = useState(null);
 
   const filtered = useMemo(() => {
     const lq = q.toLowerCase();
     return recipes.filter(r => {
       if (favOnly && !profile?.favourites?.[r.key]) return false;
+      if (pantryReady) {
+        const total = r.ingredients.length;
+        if (total === 0) return false;
+        const haveCount = r.ingredients.filter(i => {
+          const k = normIngName(i.name);
+          return ingState[i.id]?.status === "full" || pantryInventory?.[k]?.qty > 0;
+        }).length;
+        if (haveCount / total < 0.7) return false;
+      }
       if (pFilter !== "all" && detectProtein(r) !== pFilter) return false;
       if (diffFilter !== "all" && r.difficulty !== diffFilter) return false;
       if (timeFilter !== "all") {
@@ -54,10 +64,10 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
       }
       return 0;
     });
-  }, [recipes, ingState, sels, profile, q, pFilter, diffFilter, timeFilter, activeFilter, kcalFilter, sortBy, favOnly]);
+  }, [recipes, ingState, sels, profile, pantryInventory, q, pFilter, diffFilter, timeFilter, activeFilter, kcalFilter, sortBy, favOnly, pantryReady]);
 
   const selectedCount = recipes.filter(r => getSel(sels, r.key).selected).length;
-  const anyFilter = favOnly || pFilter !== "all" || diffFilter !== "all" || timeFilter !== "all" || kcalFilter !== "all" || activeFilter;
+  const anyFilter = favOnly || pantryReady || pFilter !== "all" || diffFilter !== "all" || timeFilter !== "all" || kcalFilter !== "all" || activeFilter;
 
   return (
     <div style={{ padding: "12px 12px 20px", maxWidth: 660, margin: "0 auto" }}>
@@ -71,6 +81,7 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
       <div style={{ marginBottom: 12 }}>
         <div className="fbar" style={{ gap: 6, paddingBottom: 8 }}>
           <button className={`chip${favOnly ? " on" : ""}`} onClick={() => setFavOnly(f => !f)}>⭐ Favoriten</button>
+          <button className={`chip${pantryReady ? " on" : ""}`} onClick={() => setPantryReady(f => !f)}>🧺 Aus Vorrat</button>
           <div style={{ width: 1, background: "var(--bdr)", flexShrink: 0, alignSelf: "stretch", margin: "4px 0" }}/>
           {FLAGS.prepCookSplit && <button className={`chip${activeFilter ? " on" : ""}`} onClick={() => setActiveFilter(f => !f)}>⚡ Aktiv ≤20 Min</button>}
           <button className={`chip${timeFilter === "25" ? " on" : ""}`} onClick={() => setTimeFilter(timeFilter === "25" ? "all" : "25")}>⚡ &lt;25 Min</button>
@@ -103,13 +114,14 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
             <span style={{ fontSize: 11, color: "var(--tx3)" }}>Aktiv:</span>
             {favOnly      && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>⭐ Fav</span>}
+            {pantryReady  && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>🧺 Vorrat ≥70%</span>}
             {activeFilter && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>⚡ Aktiv</span>}
             {pFilter !== "all" && <span style={{ fontSize: 11, background: PROTEINS[pFilter].color + "22", color: PROTEINS[pFilter].color, padding: "2px 8px", borderRadius: 10 }}>{PROTEINS[pFilter].emoji} {PROTEINS[pFilter].label}</span>}
             {diffFilter !== "all" && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{diffFilter}</span>}
             {timeFilter !== "all" && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{"<" + timeFilter + " Min"}</span>}
             {kcalFilter !== "all" && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{"<" + kcalFilter + " kcal"}</span>}
             <button className="btn"
-              onClick={() => { setFavOnly(false); setPFilter("all"); setDiffFilter("all"); setTimeFilter("all"); setKcalFilter("all"); setActiveFilter(false); }}
+              onClick={() => { setFavOnly(false); setPantryReady(false); setPFilter("all"); setDiffFilter("all"); setTimeFilter("all"); setKcalFilter("all"); setActiveFilter(false); }}
               style={{ fontSize: 11, color: "var(--dan)", background: "none", padding: "2px 4px", marginLeft: "auto" }}>× Alles zurücksetzen</button>
           </div>
         )}
@@ -123,7 +135,7 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
         <RecipeCard key={recipe.key} recipe={recipe} ingState={ingState} sels={sels} profile={profile}
           currentWeekId={currentWeekId} pantryInventory={pantryInventory}
           onToggleSel={onToggleSel} onToggleFav={onToggleFav} onServChange={onServChange}
-          onOpenRecipe={onOpenRecipe} onLongPress={r => setLongPressRecipe(r)}/>
+          onDayChange={onDayChange} onOpenRecipe={onOpenRecipe} onLongPress={r => setLongPressRecipe(r)}/>
       ))}
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--tx3)" }}>

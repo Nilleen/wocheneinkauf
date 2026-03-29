@@ -63,19 +63,33 @@ export function normStr(s) {
 }
 
 // ── PRICE HELPERS ─────────────────────────────────────────────────────────
-export function estimateRecipePrice(recipe, pantryInventory = {}) {
+// Estimates total ingredient cost (all ingredients, including pantry items).
+// servings: number of portions selected (recipes are based on 2 servings).
+export function estimateRecipePrice(recipe, servings = 2) {
+  const scale = (servings || 2) / 2;
   let total = 0, unknown = false;
+
+  // Main ingredients
   recipe.ingredients.forEach(ing => {
     const k = normIngName(ing.name);
-    if (pantryInventory[k]?.qty > 0) return;
     const price = REWE_PRICES[k];
-    if (price != null) total += price;
+    if (price != null) total += price * scale;
     else unknown = true;
   });
+
+  // Pantry items ("aus deiner Küche") — included at 20% of pack price
+  // since these are staples used in small amounts from existing stock.
+  (recipe.pantryItems || []).forEach(item => {
+    const k = normIngName(item);
+    const price = REWE_PRICES[k];
+    if (price != null) total += price * 0.2 * scale;
+    // unknown pantry items are silently skipped (Wasser, etc.)
+  });
+
   return { total: Math.round(total * 100) / 100, unknown };
 }
-export function formatPrice(recipe, pantryInventory = {}) {
-  const { total, unknown } = estimateRecipePrice(recipe, pantryInventory);
+export function formatPrice(recipe, servings = 2) {
+  const { total, unknown } = estimateRecipePrice(recipe, servings);
   if (total === 0 && unknown) return "~?";
   return `~€${total.toFixed(2)}${unknown ? "*" : ""}`;
 }
