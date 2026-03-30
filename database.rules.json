@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "mealprep": {
+      ".read":  "auth != null",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && root.child('householdMembers/' + auth.uid).exists()"
+    },
+    "householdMeta": {
+      ".read":  "auth != null",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && root.child('householdMembers/' + auth.uid).exists()"
+    },
+    "householdMembers": {
+      ".read": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous'",
+      "$uid": {
+        ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && ($uid === auth.uid || root.child('householdMembers/' + auth.uid).exists())"
+      }
+    }
+  }
+}
