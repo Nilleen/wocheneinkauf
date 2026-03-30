@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { AISLES } from '../constants.js';
+import { AISLES, AISLE_OVERRIDES, ING_TRANS_EN } from '../constants.js';
 import { getSel, needAmt, normIngName, normShop, expandIngredient, haptic } from '../utils.js';
 import { showToast } from '../toast.js';
 import { useT, useLang } from '../LangContext.jsx';
@@ -16,6 +16,16 @@ export default function ShoppingView({ recipes, ingState, sels, onShare, setIngS
   const lq = q.toLowerCase();
   const selRecipes = recipes.filter(r => getSel(sels, r.key).selected);
 
+  // Translate ingredient name to display language
+  const ingDisplayName = (origName) => {
+    const deDisplay = normShop(origName);
+    if (lang !== "en") return deDisplay;
+    return ING_TRANS_EN[origName.toLowerCase()] || ING_TRANS_EN[deDisplay.toLowerCase()] || deDisplay;
+  };
+
+  // Resolve aisle: override map takes priority over recipe data
+  const resolveAisle = (ing) => AISLE_OVERRIDES[normIngName(ing.name)] || ing.aisle || "other";
+
   const allMissing = useMemo(() => {
     const map = {};
     selRecipes.forEach(r => r.ingredients.forEach(ing => {
@@ -23,9 +33,10 @@ export default function ShoppingView({ recipes, ingState, sels, onShare, setIngS
       const pInv = pantryInventory[normIngName(ing.name)]; if (pInv?.qty) return;
       const expanded = expandIngredient(ing);
       expanded.forEach(eing => {
-        const display = normShop(eing.name);
+        const display = ingDisplayName(eing.name);
         const key     = normIngName(eing.name);
-        if (!map[key]) { map[key] = { name: display, orig: eing.name, ids: [ing.id], amounts: [], recs: [], aisle: ing.aisle || "other", status: "none" }; }
+        const aisle   = resolveAisle(eing);
+        if (!map[key]) { map[key] = { name: display, orig: eing.name, ids: [ing.id], amounts: [], recs: [], aisle, status: "none" }; }
         else {
           if (display.length < map[key].name.length) { map[key].name = display; map[key].orig = eing.name; }
           map[key].ids.push(ing.id);
@@ -38,6 +49,7 @@ export default function ShoppingView({ recipes, ingState, sels, onShare, setIngS
     return Object.values(map)
       .filter(i => !lq || i.name.toLowerCase().includes(lq) || i.orig.toLowerCase().includes(lq))
       .sort((a, b) => a.name.localeCompare(b.name));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selRecipes, ingState, sels, lq, lang]);
 
   const byAisle = useMemo(() => {

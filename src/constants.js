@@ -228,6 +228,67 @@ export const ING_TRANS_EN = {
   "baguette": "Baguette",
 };
 
+// Pack sizes for proportional price calculation: normName → { size, unit }
+// unit must be "g" or "ml" to enable proportional calculation
+export const REWE_PKG_SIZES = {
+  // Condiments & oils (recipe typically uses a fraction of the bottle)
+  "olivenöl":            { size: 500,  unit: "ml" },
+  "balsamicocreme":      { size: 250,  unit: "ml" },
+  "balsamico":           { size: 500,  unit: "ml" },
+  "sojasoße":            { size: 150,  unit: "ml" },
+  "trüffelöl":           { size: 250,  unit: "ml" },
+  "senf":                { size: 200,  unit: "g"  },
+  "mittelscharfer senf": { size: 200,  unit: "g"  },
+  "dijonsenf":           { size: 200,  unit: "g"  },
+  "mayonnaise":          { size: 250,  unit: "g"  },
+  "ketchup":             { size: 500,  unit: "g"  },
+  "honig":               { size: 250,  unit: "g"  },
+  "pesto":               { size: 190,  unit: "g"  },
+  "tahini":              { size: 300,  unit: "g"  },
+  // Grains & legumes (recipe uses a portion of the pack)
+  "couscous":            { size: 500,  unit: "g"  },
+  "jasminreis":          { size: 1000, unit: "g"  },
+  "basmatireis":         { size: 1000, unit: "g"  },
+  "reis":                { size: 1000, unit: "g"  },
+  "nudeln":              { size: 500,  unit: "g"  },
+  "spaghetti":           { size: 500,  unit: "g"  },
+  "penne":               { size: 500,  unit: "g"  },
+  "linsen":              { size: 500,  unit: "g"  },
+  "kichererbsen":        { size: 400,  unit: "g"  },
+  "mehl":                { size: 1000, unit: "g"  },
+  "semmelbrösel":        { size: 400,  unit: "g"  },
+  "paniermehl":          { size: 400,  unit: "g"  },
+  // Dairy
+  "milch":               { size: 1000, unit: "ml" },
+  "kochsahne":           { size: 200,  unit: "ml" },
+  "hartkäse, gerieben":  { size: 200,  unit: "g"  },
+  "frischkäse":          { size: 200,  unit: "g"  },
+};
+
+// Aisle overrides: force specific ingredients to correct aisle
+// Prevents dry goods like mais/sesam from landing in Gemüse
+export const AISLE_OVERRIDES = {
+  "mais":               "dry",
+  "maiskorner":         "dry",
+  "maiskörner":         "dry",
+  "sesamsamen":         "dry",
+  "sesam":              "dry",
+  "linsen":             "dry",
+  "kichererbsen":       "dry",
+  "bohnen":             "dry",
+  "couscous":           "dry",
+  "quinoa":             "dry",
+  "haferflocken":       "dry",
+  "mehl":               "dry",
+  "semmelbrösel":       "dry",
+  "paniermehl":         "dry",
+  "tomatenmark":        "dry",
+  "dosentomaten":       "dry",
+  "kokosmilch":         "dry",
+  "sojasoße":           "spices",
+  "avocado":            "produce",
+};
+
 export const SE = { none: "❌", partial: "⚠️", full: "✅" };
 export const SL = { none: "Fehlt", partial: "Teilweise", full: "Vorhanden" };
 

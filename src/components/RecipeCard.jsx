@@ -5,7 +5,7 @@ import { showToast } from '../toast.js';
 import { ProteinTag, StarRating, WeekChip } from './SmallComponents.jsx';
 import { useT, useLang } from '../LangContext.jsx';
 
-export default function RecipeCard({ recipe, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onDayChange, onOpenRecipe, onLongPress }) {
+export default function RecipeCard({ recipe, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onDayChange, onOpenRecipe, onLongPress, onMarkCooked }) {
   const t    = useT();
   const lang = useLang();
   const sel    = getSel(sels, recipe.key);
@@ -115,6 +115,13 @@ export default function RecipeCard({ recipe, ingState, sels, profile, currentWee
                   style={{ fontSize: 18, background: "none", color: "var(--tx)", width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                 <span style={{ fontSize: 10, color: "var(--tx3)" }}>{t('portions_abbrev')}</span>
               </div>
+            )}
+            {isSel && onMarkCooked && (
+              <button className="btn" title={lang === "en" ? "Mark as cooked & deduct pantry" : "Als gekocht markieren & Vorrat abziehen"}
+                onClick={() => { haptic([10,30,10]); onMarkCooked(recipe.key); }}
+                style={{ padding: "7px 10px", borderRadius: 10, fontSize: 14, background: "var(--sur2)", border: "1px solid var(--bdr)", flexShrink: 0 }}>
+                🍳
+              </button>
             )}
           </div>
           {isSel && onDayChange && (

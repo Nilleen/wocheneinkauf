@@ -6,7 +6,7 @@ import { useT, useLang } from '../LangContext.jsx';
 import RecipeCard from './RecipeCard.jsx';
 import QuickRatingSheet from './QuickRatingSheet.jsx';
 
-export default function RecipesView({ recipes, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onDayChange, onOpenRecipe }) {
+export default function RecipesView({ recipes, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onDayChange, onOpenRecipe, onMarkCooked }) {
   const t    = useT();
   const lang = useLang();
   const [q,            setQ]           = useState("");
@@ -139,7 +139,7 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
         <RecipeCard key={recipe.key} recipe={recipe} ingState={ingState} sels={sels} profile={profile}
           currentWeekId={currentWeekId} pantryInventory={pantryInventory}
           onToggleSel={onToggleSel} onToggleFav={onToggleFav} onServChange={onServChange}
-          onDayChange={onDayChange} onOpenRecipe={onOpenRecipe} onLongPress={r => setLongPressRecipe(r)}/>
+          onDayChange={onDayChange} onOpenRecipe={onOpenRecipe} onLongPress={r => setLongPressRecipe(r)} onMarkCooked={onMarkCooked}/>
       ))}
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--tx3)" }}>

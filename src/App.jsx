@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { FLAGS, SEED } from './constants.js';
-import { weekId, weekLabel, weekShort, getSel, fromFB, buildInit, buildDefSel, normIngName, normShop, haptic } from './utils.js';
+import { weekId, weekLabel, weekShort, getSel, fromFB, buildInit, buildDefSel, normIngName, normShop, haptic, parseAmt, scaleAmt } from './utils.js';
 import { FB } from './firebase.js';
 import { showToast } from './toast.js';
 import { initialState, appReducer } from './store.js';
@@ -212,19 +212,61 @@ export default function App() {
 
   // ── Reset / archive ──
   const handleReset = () => {
-    const { weekId: wid, ingState } = state;
+    const { weekId: wid, ingState, recipes: recs, pantryInventory: pInv } = state;
     haptic([10, 50, 10]);
     const archiveSnap = { meta: { label: weekLabel(wid) }, selections: state.sels, state: ingState };
     FB.set(`${FB.history()}/${wid}`, archiveSnap);
     const selKeys = Object.keys(state.sels).filter(k => state.sels[k]?.selected);
     selKeys.forEach(k => FB.set(`${FB.profile()}/lastCooked/${k}`, wid));
-    const fresh = {}; Object.keys(ingState).forEach(id => { fresh[id] = { ...ingState[id], status: "none", have: "" }; });
+    // Build id→normName map so we can check pantry qty per ingredient
+    const idToNorm = {};
+    recs.forEach(r => r.ingredients.forEach(i => { idToNorm[i.id] = normIngName(i.name); }));
+    const fresh = {};
+    Object.keys(ingState).forEach(id => {
+      const k = idToNorm[id];
+      const hasPantryQty = k && pInv?.[k]?.qty;
+      // Keep "full" for pantry-tracked items; reset everything else
+      fresh[id] = hasPantryQty
+        ? { ...ingState[id], status: "full" }
+        : { ...ingState[id], status: "none", have: "" };
+    });
     lw.current = true;
     FB.set(FB.weekState(wid), fresh).then(() => setTimeout(() => lw.current = false, 500));
     dispatch({ type: "SET_ING_STATE", v: fresh });
     dispatch({ type: "HIDE_MODAL", modal: "showReset" });
     showToast(state.lang === "en" ? `✓ Reset — ${weekShort(wid)} archived` : `✓ Zurückgesetzt — ${weekShort(wid)} archiviert`);
   };
+
+  // ── Mark recipe as cooked — deduct pantry inventory ──
+  const handleMarkCooked = useCallback((recipeKey) => {
+    const recipe = state.recipes.find(r => r.key === recipeKey);
+    if (!recipe) return;
+    const servings = getSel(state.sels, recipeKey).servings || 2;
+    FB.set(`${FB.profile()}/lastCooked/${recipeKey}`, state.weekId);
+    // Unit conversion helpers
+    const toG  = (n, u) => { if (!u || u === "g") return n; if (u === "kg") return n * 1000; if (u === "el") return n * 15; if (u === "tl") return n * 5; return null; };
+    const toMl = (n, u) => { if (u === "ml") return n; if (u === "l") return n * 1000; if (u === "el") return n * 15; if (u === "tl") return n * 5; return null; };
+    recipe.ingredients.forEach(ing => {
+      const k   = normIngName(ing.name);
+      const inv = state.pantryInventory[k];
+      if (!inv?.qty) return;
+      const currentQty = parseFloat(inv.qty) || 0;
+      const used = parseAmt(scaleAmt(ing.amount, servings / 2));
+      if (!used) return;
+      const invUnit  = (inv.unit || "g").toLowerCase();
+      const usedUnit = used.unit.toLowerCase();
+      let usedInUnit = null;
+      if (invUnit === usedUnit)   usedInUnit = used.num;
+      else if (invUnit === "g")   usedInUnit = toG(used.num, usedUnit);
+      else if (invUnit === "ml")  usedInUnit = toMl(used.num, usedUnit);
+      if (usedInUnit === null) return;
+      const remaining = Math.max(0, Math.round((currentQty - usedInUnit) * 10) / 10);
+      if (remaining === 0) FB.remove(`${FB.pantryInv()}/${k}`);
+      else FB.set(`${FB.pantryInv()}/${k}`, { qty: String(remaining), unit: inv.unit, lastUpdated: Date.now() });
+    });
+    haptic([10, 50, 10]);
+    showToast(state.lang === "en" ? "🍳 Cooked! Pantry updated" : "🍳 Gekocht! Vorrat aktualisiert");
+  }, [state.recipes, state.sels, state.pantryInventory, state.weekId, state.lang]);
 
   // ── Week navigation ──
   const navigateWeek = async (dir) => {
@@ -390,7 +432,7 @@ export default function App() {
               <RecipesView recipes={recipes} ingState={ingState} sels={sels} profile={profile}
                 currentWeekId={wid} pantryInventory={pantryInventory}
                 onToggleSel={toggleSel} onToggleFav={toggleFav} onServChange={changeServings}
-                onDayChange={changeDay}
+                onDayChange={changeDay} onMarkCooked={handleMarkCooked}
                 onOpenRecipe={r => dispatch({ type: "OPEN_RECIPE", recipe: r })}/>
             )}
             {state.view === "checklist" && (
