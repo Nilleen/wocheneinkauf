@@ -20,22 +20,31 @@ const db   = getDatabase(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// ── DB PATH BUILDERS ───────────────────────────────────────────────────────
-const weekMeta     = (wid) => `mealprep/weeks/${wid}/meta`;
-const weekSel      = (wid) => `mealprep/weeks/${wid}/selections`;
-const weekState    = (wid) => `mealprep/weeks/${wid}/state`;
-const pantryInv    = ()    => `mealprep/pantry/inventory`;
-const pantryCustom = ()    => `mealprep/pantry/custom`;
-const profile      = ()    => `mealprep/profile`;
-const favs         = ()    => `mealprep/profile/favourites`;
-const history      = ()    => `mealprep/history`;
-const settings     = ()    => `mealprep/settings`;
-const recipes      = ()    => `mealprep/recipes`;
+// ── ACTIVE HOUSEHOLD CODE ──────────────────────────────────────────────────
+// Set once after auth resolves; all path builders depend on it.
+let _code = null;
+function setHouseholdCode(code) { _code = code; }
+function getHouseholdCode()     { return _code; }
 
-// Household paths (for auth/membership)
-const householdMembers = ()      => `householdMembers`;
-const householdMeta    = ()      => `householdMeta`;
-const memberPath       = (uid)   => `householdMembers/${uid}`;
+// ── DB PATH BUILDERS (household-scoped) ───────────────────────────────────
+const hd           = (sub)       => `households/${_code}/data/${sub}`;
+const weekMeta     = (wid)       => hd(`weeks/${wid}/meta`);
+const weekSel      = (wid)       => hd(`weeks/${wid}/selections`);
+const weekState    = (wid)       => hd(`weeks/${wid}/state`);
+const pantryInv    = ()          => hd(`pantry/inventory`);
+const pantryCustom = ()          => hd(`pantry/custom`);
+const profile      = ()          => hd(`profile`);
+const favs         = ()          => hd(`profile/favourites`);
+const history      = ()          => hd(`history`);
+const settings     = ()          => hd(`settings`);
+const recipes      = ()          => hd(`recipes`);
+
+// ── HOUSEHOLD PATHS ────────────────────────────────────────────────────────
+const hhMeta       = (code)      => `households/${code || _code}/meta`;
+const hhMembers    = (code)      => `households/${code || _code}/members`;
+const hhMemberPath = (code, uid) => `households/${code || _code}/members/${uid}`;
+// Quick lookup index: /householdMembers/{uid} → { code, displayName, ... }
+const memberIndex  = (uid)       => `householdMembers/${uid}`;
 
 // ── DB HELPERS ─────────────────────────────────────────────────────────────
 async function getOnce(path)       { return (await get(ref(db, path))).val(); }
@@ -53,34 +62,52 @@ const signInGuest   = () => signInAnonymously(auth);
 const signOut       = () => fbSignOut(auth);
 const onAuthChange  = (cb) => onAuthStateChanged(auth, cb);
 
-async function checkMembership(uid) {
-  return (await get(ref(db, memberPath(uid)))).val() != null;
+// Returns true if a household with this code already exists
+async function householdExists(code) {
+  return (await get(ref(db, hhMeta(code)))).exists();
 }
+
+// Returns the member index record { code, displayName, ... } or null
+async function getMemberRecord(uid) {
+  return getOnce(memberIndex(uid));
+}
+
+// Returns active household code (for display in Settings)
 async function getJoinCode() {
-  return (await get(ref(db, `${householdMeta()}/joinCode`))).val();
+  return _code || null;
 }
-async function getMemberCount() {
-  const snap = await get(ref(db, householdMembers()));
-  const val = snap.val();
-  return val ? Object.keys(val).length : 0;
+
+// Add a Google user as a member of an existing household.
+// Writes member index FIRST so subsequent Firebase rule checks resolve membership.
+async function joinHousehold(uid, displayName, email, code) {
+  const c = code.toUpperCase();
+  // 1. Member index (uid → code; this makes rule checks pass for subsequent writes)
+  await fbSet(memberIndex(uid), { code: c, displayName: displayName || "Member", email: email || "", joinedAt: Date.now() });
+  // 2. Member record inside the household node
+  await fbSet(hhMemberPath(c, uid), { displayName: displayName || "Member", email: email || "", joinedAt: Date.now() });
 }
-async function joinHousehold(uid, displayName, email) {
-  await fbSet(memberPath(uid), { displayName: displayName || "Member", email: email || "", joinedAt: Date.now() });
-}
-async function setupHousehold(uid, displayName, email, joinCode) {
-  // Sets the join code and adds the first member atomically
-  await fbUpdate(householdMeta(), { joinCode, createdAt: Date.now() });
-  await joinHousehold(uid, displayName, email);
+
+// Create a brand-new household. Sequential writes so each step's rules pass.
+async function setupHousehold(uid, displayName, email, code) {
+  const c = code.toUpperCase();
+  // 1. Member index — after this, rule `householdMembers/{uid}/code === c` is TRUE
+  await fbSet(memberIndex(uid), { code: c, displayName: displayName || "Owner", email: email || "", joinedAt: Date.now() });
+  // 2. Member record (rules allow because $uid === auth.uid)
+  await fbSet(hhMemberPath(c, uid), { displayName: displayName || "Owner", email: email || "", joinedAt: Date.now(), role: "owner" });
+  // 3. Household meta (rules now allow because member index proves membership)
+  await fbSet(hhMeta(c), { joinCode: c, createdAt: Date.now() });
 }
 
 export const FB = {
-  // DB paths
+  // Household code
+  setHouseholdCode, getHouseholdCode,
+  // DB path builders
   weekMeta, weekSel, weekState, pantryInv, pantryCustom,
   profile, favs, history, settings, recipes,
-  householdMembers, householdMeta, memberPath,
+  hhMeta, hhMembers, hhMemberPath, memberIndex,
   // DB ops
   getOnce, set: fbSet, update: fbUpdate, remove: fbRemove, sub,
   // Auth
   auth, signInGoogle, signInGuest, signOut, onAuthChange,
-  checkMembership, getJoinCode, getMemberCount, joinHousehold, setupHousehold,
+  householdExists, getMemberRecord, getJoinCode, joinHousehold, setupHousehold,
 };
