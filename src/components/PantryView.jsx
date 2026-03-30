@@ -99,7 +99,7 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
         <div style={{ width: 4, height: 32, borderRadius: 2, background: isHave ? item.color : "var(--bdr)", flexShrink: 0, transition: "background .2s" }}/>
         <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setItemStatus(item, isHave ? "none" : "full")}>
           <div style={{ fontSize: 14, color: isHave ? "var(--tx)" : "var(--tx3)", fontWeight: isHave ? "bold" : "normal" }}>{item.name}</div>
-          <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 1, lineHeight: 1.3 }}>{item.recipes.slice(0, 3).map(n => n.split(" ").slice(0, 3).join(" ")).join(", ")}{item.recipes.length > 3 ? ` +${item.recipes.length - 3}` : ""}</div>
+          <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 1, lineHeight: 1.3 }}>{item.recipes.slice(0, 3).map(n => { const lo = n.toLowerCase(); const di = lo.indexOf(" dazu "); if (di > 0) return n.slice(0, di); const mi = lo.indexOf(" mit "); if (mi > 0 && n.slice(0, mi).trim().split(" ").length >= 2) return n.slice(0, mi); return n; }).join(", ")}{item.recipes.length > 3 ? ` +${item.recipes.length - 3}` : ""}</div>
         </div>
         <QtyEditor item={item}/>
         <button onClick={() => setItemStatus(item, isHave ? "none" : "full")}

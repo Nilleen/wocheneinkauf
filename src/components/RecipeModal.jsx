@@ -5,7 +5,7 @@ import { ProteinTag, StarRating } from './SmallComponents.jsx';
 import { weekShort } from '../utils.js';
 import { useT, useLang } from '../LangContext.jsx';
 
-export default function RecipeModal({ recipe, ingState, sels, onClose, onServChange, profile, onSetRating, onSetNote }) {
+export default function RecipeModal({ recipe, ingState, sels, onClose, onServChange, profile, onSetRating, onSetNote, ingDB }) {
   const t    = useT();
   const lang = useLang();
   const srv   = getSel(sels, recipe.key).servings || 2;
@@ -128,7 +128,7 @@ export default function RecipeModal({ recipe, ingState, sels, onClose, onServCha
 
           {/* Price breakdown */}
           {FLAGS.priceEstimates && (() => {
-            const { total, perPortion, unknownNames, hasFuzzy } = estimateRecipePrice(recipe, srv);
+            const { total, perPortion, unknownNames, hasFuzzy } = estimateRecipePrice(recipe, srv, ingDB);
             if (total === 0 && unknownNames.length === recipe.ingredients.length) return null;
             const scale = srv / 2;
             const priceRows = recipe.ingredients.map(ing => {

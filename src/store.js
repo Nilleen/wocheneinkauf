@@ -12,6 +12,7 @@ export const initialState = {
   customPantry: {},
   pantryInventory: {},
   history: {},
+  ingDB: {},
   darkMode: "auto",
   lang: "en",
   weekId: weekId(0),
@@ -38,6 +39,12 @@ export function appReducer(state, action) {
     case "SET_CUSTOM_PANTRY": return { ...state, customPantry: action.v };
     case "SET_PANTRY_INV":  return { ...state, pantryInventory: action.v };
     case "SET_HISTORY":     return { ...state, history: action.v };
+    case "SET_ING_DB":      return { ...state, ingDB: action.v };
+    case "PATCH_LAST_COOKED": {
+      const lc = { ...state.profile.lastCooked };
+      if (action.v === null) delete lc[action.key]; else lc[action.key] = action.v;
+      return { ...state, profile: { ...state.profile, lastCooked: lc } };
+    }
     case "SET_DARK_MODE":   return { ...state, darkMode: action.v };
     case "SET_LANG":        return { ...state, lang: action.v };
     case "SET_WEEK":        return { ...state, weekOffset: action.offset, weekId: weekId(action.offset) };

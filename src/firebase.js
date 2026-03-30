@@ -38,6 +38,7 @@ const favs         = ()          => hd(`profile/favourites`);
 const history      = ()          => hd(`history`);
 const settings     = ()          => hd(`settings`);
 const recipes      = ()          => hd(`recipes`);
+const ingredients  = ()          => hd(`ingredientDB`);
 
 // ── HOUSEHOLD PATHS ────────────────────────────────────────────────────────
 const hhMeta       = (code)      => `households/${code || _code}/meta`;
@@ -103,7 +104,7 @@ export const FB = {
   setHouseholdCode, getHouseholdCode,
   // DB path builders
   weekMeta, weekSel, weekState, pantryInv, pantryCustom,
-  profile, favs, history, settings, recipes,
+  profile, favs, history, settings, recipes, ingredients,
   hhMeta, hhMembers, hhMemberPath, memberIndex,
   // DB ops
   getOnce, set: fbSet, update: fbUpdate, remove: fbRemove, sub,

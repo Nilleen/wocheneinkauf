@@ -1,4 +1,5 @@
 import { SPICES, ING_ALIASES, ING_SPLITS, REWE_PRICES, REWE_PKG_SIZES, FLAGS } from './constants.js';
+import { findIngredient, splitIngredientName } from './ingredientDB.js';
 
 // ── ISO WEEK UTILITIES ─────────────────────────────────────────────────────
 export function getISOWeek(d = new Date()) {
@@ -48,11 +49,12 @@ export function normShop(n) {
   if (alias) return alias;
   return n.replace(/,?\s*bio\b/gi, "").replace(/\s+/g, " ").trim();
 }
-export function expandIngredient(ing) {
-  const l = (ing.name || "").toLowerCase().trim();
-  const targets = ING_SPLITS[l];
-  if (targets) {
-    return targets.map((t, i) => ({ ...ing, id: `${ing.id}_x${i}`, name: t, _fromSplit: ing.id }));
+export function expandIngredient(ing, ingDB) {
+  // DB-aware split first (most accurate), then fall back to ING_SPLITS constant
+  const splits = splitIngredientName(ing.name, ingDB || null)
+    || (() => { const l = (ing.name || "").toLowerCase().trim(); return ING_SPLITS[l] || null; })();
+  if (splits) {
+    return splits.map((t, i) => ({ ...ing, id: `${ing.id}_x${i}`, name: t, _fromSplit: ing.id }));
   }
   return [ing];
 }
@@ -75,30 +77,40 @@ function toBaseUnit(num, unit) {
   return null;
 }
 
-// Fuzzy price lookup — exact match first, then substring match
-export function fuzzyPriceLookup(normName) {
-  if (REWE_PRICES[normName] != null) return { price: REWE_PRICES[normName], pkg: REWE_PKG_SIZES[normName] || null, fuzzy: false };
+// Fuzzy price lookup — checks ingredient DB first, then falls back to constants.
+export function fuzzyPriceLookup(normName, ingDB) {
+  if (ingDB) {
+    const entry = findIngredient(normName, ingDB);
+    if (entry?.price != null) return {
+      price: entry.price,
+      pkg: entry.pkgSize ? { size: entry.pkgSize, unit: entry.pkgUnit } : null,
+      fuzzy: false,
+      pantryBase: entry.pantryBase || false,
+      priceSource: entry.priceSource || "estimate",
+    };
+  }
+  // Fallback to hardcoded REWE_PRICES constants
+  if (REWE_PRICES[normName] != null) return { price: REWE_PRICES[normName], pkg: REWE_PKG_SIZES[normName] || null, fuzzy: false, pantryBase: false };
   for (const [k, v] of Object.entries(REWE_PRICES)) {
     if (k.length > 3 && (normName.includes(k) || k.includes(normName)))
-      return { price: v, pkg: REWE_PKG_SIZES[k] || null, fuzzy: true };
+      return { price: v, pkg: REWE_PKG_SIZES[k] || null, fuzzy: true, pantryBase: false };
   }
   return null;
 }
 
 // Estimates total ingredient cost (all ingredients, including pantry items).
 // Returns: { total, perPortion, unknownNames, hasFuzzy }
-export function estimateRecipePrice(recipe, servings = 2) {
+export function estimateRecipePrice(recipe, servings = 2, ingDB) {
   const scale = (servings || 2) / 2;
   let total = 0;
   const unknownNames = [];
   let hasFuzzy = false;
 
   recipe.ingredients.forEach(ing => {
-    // Skip spices — negligible cost, hard to calculate
-    if (ing.aisle === "spices") return;
-
     const k = normIngName(ing.name);
-    const match = fuzzyPriceLookup(k);
+    const match = fuzzyPriceLookup(k, ingDB);
+    // Skip pantry base items (salt, oil, water etc.) — negligible cost
+    if (match?.pantryBase) return;
     if (match) {
       let cost = match.price;
       // Proportional calculation: if pack size known and recipe has a measurable amount
@@ -122,8 +134,8 @@ export function estimateRecipePrice(recipe, servings = 2) {
   // Pantry items at 20% of pack price (used in small amounts)
   (recipe.pantryItems || []).forEach(item => {
     const k = normIngName(item);
-    const match = fuzzyPriceLookup(k);
-    if (match) total += match.price * 0.2 * scale;
+    const match = fuzzyPriceLookup(k, ingDB);
+    if (match && !match.pantryBase) total += match.price * 0.2 * scale;
   });
 
   const rounded = Math.round(total * 100) / 100;
@@ -134,8 +146,8 @@ export function estimateRecipePrice(recipe, servings = 2) {
     hasFuzzy,
   };
 }
-export function formatPrice(recipe, servings = 2) {
-  const { total, perPortion, unknownNames, hasFuzzy } = estimateRecipePrice(recipe, servings);
+export function formatPrice(recipe, servings = 2, ingDB) {
+  const { total, perPortion, unknownNames, hasFuzzy } = estimateRecipePrice(recipe, servings, ingDB);
   const hasUnknown = unknownNames.length > 0;
   if (total === 0 && hasUnknown) return "~?";
   const flag = (hasUnknown || hasFuzzy) ? "*" : "";

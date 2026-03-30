@@ -1,6 +1,7 @@
 import { useReducer, useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { FLAGS, SEED } from './constants.js';
 import { weekId, weekLabel, weekShort, getSel, fromFB, buildInit, buildDefSel, normIngName, normShop, haptic, parseAmt, scaleAmt } from './utils.js';
+import { syncIngredientDB } from './ingredientDB.js';
 import { FB } from './firebase.js';
 import { showToast } from './toast.js';
 import { initialState, appReducer } from './store.js';
@@ -126,6 +127,11 @@ function AppContent({ authState }) {
 
     const { weekId: wid } = state;
     (async () => {
+      // Sync ingredient DB — non-destructive: only writes entries not yet in Firebase
+      const currentIngDB = await FB.getOnce(FB.ingredients());
+      const toWrite = syncIngredientDB(currentIngDB || {});
+      if (Object.keys(toWrite).length > 0) await FB.update(FB.ingredients(), toWrite);
+
       const snap = await FB.getOnce(FB.recipes());
       if (!snap) {
         const fb = {};
@@ -164,6 +170,7 @@ function AppContent({ authState }) {
     sub(FB.pantryCustom(), d => dispatch({ type: "SET_CUSTOM_PANTRY", v: d || {} }));
     sub(FB.pantryInv(),    d => dispatch({ type: "SET_PANTRY_INV",    v: d || {} }));
     sub(FB.history(),      d => dispatch({ type: "SET_HISTORY",       v: d || {} }));
+    sub(FB.ingredients(),  d => dispatch({ type: "SET_ING_DB",        v: d || {} }));
     sub(FB.settings(),     d => {
       if (d?.darkMode) dispatch({ type: "SET_DARK_MODE", v: d.darkMode });
       if (d?.lang)     dispatch({ type: "SET_LANG",      v: d.lang });
@@ -282,6 +289,13 @@ function AppContent({ authState }) {
     showToast(state.lang === "en" ? "🍳 Cooked! Pantry updated" : "🍳 Gekocht! Vorrat aktualisiert");
   }, [state.recipes, state.sels, state.pantryInventory, state.weekId, state.lang]);
 
+  // ── Uncook — just clears lastCooked flag, no pantry reversal ──
+  const handleUncookRecipe = guardWrite(useCallback((recipeKey) => {
+    dispatch({ type: "PATCH_LAST_COOKED", key: recipeKey, v: null });
+    FB.remove(`${FB.profile()}/lastCooked/${recipeKey}`);
+    showToast(state.lang === "en" ? "↩️ Marked as uncooked" : "↩️ Als ungekocht markiert");
+  }, [state.lang]));
+
   // ── Week navigation ──
   const navigateWeek = async (dir) => {
     const newOffset = state.weekOffset + dir;
@@ -320,7 +334,7 @@ function AppContent({ authState }) {
     await FB.set(`${FB.weekSel(state.weekId)}/${recipe.key}`, { selected: false, servings: 2 });
   };
 
-  const { recipes, ingState, sels, profile, customPantry, pantryInventory, history, darkMode, lang, loading, sync, weekId: wid, weekOffset } = state;
+  const { recipes, ingState, sels, profile, customPantry, pantryInventory, history, ingDB, darkMode, lang, loading, sync, weekId: wid, weekOffset } = state;
 
   const selIngAll    = useMemo(() => recipes.filter(r => getSel(sels, r.key).selected).flatMap(r => r.ingredients), [recipes, sels]);
   const fullCount    = selIngAll.filter(i => ingState[i.id]?.status === "full").length;
@@ -346,15 +360,15 @@ function AppContent({ authState }) {
 
       {/* Modals */}
       {state.selRecipe && (
-        <RecipeModal recipe={state.selRecipe} ingState={ingState} sels={sels} profile={profile}
+        <RecipeModal recipe={state.selRecipe} ingState={ingState} sels={sels} profile={profile} ingDB={ingDB}
           onClose={() => dispatch({ type: "CLOSE_RECIPE" })} onServChange={changeServings}
           onSetRating={setRating} onSetNote={setNote}/>
       )}
       {state.showAddRecipe && <AddRecipeModal onSave={handleAddRecipe} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showAddRecipe" })}/>}
       {state.showThisWeek && (
-        <ThisWeekModal recipes={recipes} sels={sels} ingState={ingState} weekId={wid}
+        <ThisWeekModal recipes={recipes} sels={sels} ingState={ingState} weekId={wid} ingDB={ingDB}
           onServChange={changeServings} onDayChange={changeDay} onToggleSel={toggleSel}
-          onMarkCooked={handleMarkCooked} profile={profile}
+          onMarkCooked={handleMarkCooked} onUncookRecipe={handleUncookRecipe} profile={profile}
           onClearAll={() => { recipes.forEach(r => { if (getSel(sels, r.key).selected) toggleSel(r.key); }); dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" }); }}
           onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" })}
           onOpenRecipe={r => { dispatch({ type: "OPEN_RECIPE", recipe: r }); dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" }); }}/>
