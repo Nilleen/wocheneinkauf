@@ -20,8 +20,8 @@ export function AuthProvider({ children }) {
         return;
       }
       if (user.isAnonymous) {
-        // Guest — needs to enter a household code to get a scoped view
-        setAuth({ status: "pending", user, householdCode: null });
+        // Guest — read-only preview, no code required
+        setAuth({ status: "guest", user, householdCode: null });
         return;
       }
       // Google user — check if they already belong to a household

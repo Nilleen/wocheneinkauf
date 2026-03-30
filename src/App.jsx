@@ -4,7 +4,7 @@ import { weekId, weekLabel, weekShort, getSel, fromFB, buildInit, buildDefSel, n
 import { FB } from './firebase.js';
 import { showToast } from './toast.js';
 import { initialState, appReducer } from './store.js';
-import { LangContext, useT } from './LangContext.jsx';
+import { LangContext } from './LangContext.jsx';
 import { useAuth } from './AuthContext.jsx';
 
 import ToastManager    from './components/ToastManager.jsx';
@@ -23,43 +23,13 @@ import JoinCodeModal   from './components/JoinCodeModal.jsx';
 import { SkeletonCards } from './components/SmallComponents.jsx';
 import { AISLES } from './constants.js';
 
-// ── AUTO-MIGRATION (v1 → v2 schema) ──────────────────────────────────────
-async function runMigration() {
-  try {
-    const [weeksSnap, oldSel, oldState, oldPantry] = await Promise.all([
-      FB.getOnce("mealprep/weeks"),
-      FB.getOnce("mealprep/selections"),
-      FB.getOnce("mealprep/state"),
-      FB.getOnce("mealprep/pantry"),
-    ]);
-    if (!weeksSnap && oldSel) {
-      const cid = weekId(0);
-      const now = new Date();
-      if (oldSel)   await FB.set(FB.weekSel(cid),   oldSel);
-      if (oldState) await FB.set(FB.weekState(cid),  oldState);
-      const mon = new Date(now); mon.setDate(now.getDate() - (now.getDay() || 7) + 1);
-      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-      await FB.set(FB.weekMeta(cid), { label: weekLabel(cid), startDate: mon.toISOString(), endDate: sun.toISOString(), status: "active" });
-      if (oldPantry && typeof oldPantry === "object") {
-        const hasNested = oldPantry.inventory || oldPantry.custom;
-        if (!hasNested) {
-          const custom = {};
-          Object.entries(oldPantry).forEach(([k, v]) => { custom[k] = v; });
-          await FB.set(FB.pantryCustom(), custom);
-        }
-      }
-      console.log("✅ Migration v1→v2 complete:", cid);
-    }
-  } catch (e) { console.warn("Migration skip:", e); }
-}
-
+// ── AUTH GATE ─────────────────────────────────────────────────────────────
+// Thin wrapper: handles auth routing only. AppContent holds all hooks.
+// Splitting prevents a Rules-of-Hooks violation where hooks after the early
+// return would change count between renders as auth status transitions.
 export default function App() {
   const authState = useAuth();
-  const [state, dispatch] = useReducer(appReducer, initialState);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const lw = useRef(false);
 
-  // Auth gates — show login / join screens before the main app
   if (authState.status === "loading") return (
     <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#1a2e1f" }}>
       <div style={{ fontSize: 48 }}>🛒</div>
@@ -68,10 +38,21 @@ export default function App() {
   if (authState.status === "none")    return <LoginScreen />;
   if (authState.status === "pending") return <JoinCodeModal />;
 
-  // canWrite is true only for full household members
-  const canWrite = authState.status === "member";
+  // key resets AppContent (and all its hooks) cleanly when household changes
+  return <AppContent authState={authState} key={authState.householdCode || "guest"} />;
+}
+
+// ── APP CONTENT ────────────────────────────────────────────────────────────
+// All hooks live here — no early returns, so hook order is always stable.
+function AppContent({ authState }) {
+  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const lw = useRef(false);
+
+  const isMember = authState.status === "member";
+
   const guardWrite = (fn) => (...args) => {
-    if (!canWrite) { showToast("🔒 Sign in with a join code to edit"); return; }
+    if (!isMember) { showToast("🔒 Sign in with a join code to edit"); return; }
     return fn(...args);
   };
 
@@ -97,8 +78,8 @@ export default function App() {
     return () => mq.removeEventListener("change", h);
   }, [state.darkMode]);
 
-  const setDarkMode = m => { dispatch({ type: "SET_DARK_MODE", v: m }); FB.set(`${FB.settings()}/darkMode`, m); };
-  const setLang     = m => { dispatch({ type: "SET_LANG",      v: m }); FB.set(`${FB.settings()}/lang`,     m); };
+  const setDarkMode = m => { dispatch({ type: "SET_DARK_MODE", v: m }); if (isMember) FB.set(`${FB.settings()}/darkMode`, m); };
+  const setLang     = m => { dispatch({ type: "SET_LANG",      v: m }); if (isMember) FB.set(`${FB.settings()}/lang`,     m); };
 
   // ── Android back button ──
   useEffect(() => {
@@ -124,11 +105,27 @@ export default function App() {
       dispatch({ type: "SHOW_MODAL", modal: "showPWA" });
   }, []);
 
-  // ── Firebase init + subscribe ──
+  // ── Firebase init + subscribe (members only) ──
+  // Guests see SEED recipes with no Firebase reads/writes.
   useEffect(() => {
+    if (!isMember) {
+      // Guest: load built-in SEED recipes directly, no Firebase needed
+      const fb = {};
+      SEED.forEach(r => {
+        const ings = {};
+        r.ingredients.forEach(i => { ings[i.id] = { name: i.name, amount: i.amount, aisle: i.aisle }; });
+        fb[r.key] = { ...r, ingredients: ings };
+      });
+      dispatch({ type: "SET_RECIPES", v: fromFB(fb) });
+      dispatch({ type: "SET_ING_STATE", v: buildInit(SEED) });
+      dispatch({ type: "SET_SELS",      v: buildDefSel(SEED) });
+      dispatch({ type: "SET_LOADING",   v: false });
+      dispatch({ type: "SET_SYNC",      v: "synced" });
+      return;
+    }
+
     const { weekId: wid } = state;
     (async () => {
-      await runMigration();
       const snap = await FB.getOnce(FB.recipes());
       if (!snap) {
         const fb = {};
@@ -173,7 +170,7 @@ export default function App() {
     });
 
     return () => unsubs.forEach(u => u());
-  }, [state.weekId]);
+  }, [state.weekId, isMember]);
 
   // ── Update handlers (all writes guarded) ──
   const updateIng = guardWrite(useCallback((id, field, value) => {
@@ -238,14 +235,12 @@ export default function App() {
     FB.set(`${FB.history()}/${wid}`, archiveSnap);
     const selKeys = Object.keys(state.sels).filter(k => state.sels[k]?.selected);
     selKeys.forEach(k => FB.set(`${FB.profile()}/lastCooked/${k}`, wid));
-    // Build id→normName map so we can check pantry qty per ingredient
     const idToNorm = {};
     recs.forEach(r => r.ingredients.forEach(i => { idToNorm[i.id] = normIngName(i.name); }));
     const fresh = {};
     Object.keys(ingState).forEach(id => {
       const k = idToNorm[id];
       const hasPantryQty = k && pInv?.[k]?.qty;
-      // Keep "full" for pantry-tracked items; reset everything else
       fresh[id] = hasPantryQty
         ? { ...ingState[id], status: "full" }
         : { ...ingState[id], status: "none", have: "" };
@@ -263,7 +258,6 @@ export default function App() {
     if (!recipe) return;
     const servings = getSel(state.sels, recipeKey).servings || 2;
     FB.set(`${FB.profile()}/lastCooked/${recipeKey}`, state.weekId);
-    // Unit conversion helpers
     const toG  = (n, u) => { if (!u || u === "g") return n; if (u === "kg") return n * 1000; if (u === "el") return n * 15; if (u === "tl") return n * 5; return null; };
     const toMl = (n, u) => { if (u === "ml") return n; if (u === "l") return n * 1000; if (u === "el") return n * 15; if (u === "tl") return n * 5; return null; };
     recipe.ingredients.forEach(ing => {
@@ -435,6 +429,13 @@ export default function App() {
       {sync === "error" && (
         <div style={{ background: "var(--dan)", color: "#fff", padding: "8px 16px", fontSize: 12, textAlign: "center", flexShrink: 0 }}>
           {EN ? "❌ Firebase error — check database rules" : "❌ Firebase-Fehler — Datenbankregeln prüfen"}
+        </div>
+      )}
+
+      {/* Guest banner */}
+      {authState.status === "guest" && (
+        <div style={{ background: "var(--acbg)", borderBottom: "1px solid var(--ac)", padding: "8px 16px", fontSize: 12, textAlign: "center", color: "var(--ac)", flexShrink: 0 }}>
+          👀 {EN ? "Guest mode — sign in to save changes" : "Gastmodus — anmelden um Änderungen zu speichern"}
         </div>
       )}
 

@@ -53,7 +53,7 @@ export default function JoinCodeModal() {
           <input
             value={code}
             onChange={e => setCode(e.target.value.toUpperCase())}
-            placeholder={isGuest ? "Household code" : "e.g. WIKIS or SMITH2025"}
+            placeholder={isGuest ? "Household code" : "e.g. FAMILY or HOME2025"}
             maxLength={20}
             autoFocus
             style={{
