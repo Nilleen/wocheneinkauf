@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { AISLES, AISLE_OVERRIDES, ING_TRANS_EN } from '../constants.js';
-import { getSel, needAmt, normIngName, normShop, expandIngredient, haptic } from '../utils.js';
+import { getSel, needAmt, normIngName, normShop, expandIngredient, haptic, parseAmt } from '../utils.js';
 import { showToast } from '../toast.js';
 import { useT, useLang } from '../LangContext.jsx';
 import SwipeItem from './SwipeItem.jsx';
 import { combineAmts } from '../utils.js';
 
-export default function ShoppingView({ recipes, ingState, sels, onShare, setIngStatus, pantryInventory }) {
+export default function ShoppingView({ recipes, ingState, sels, onShare, setIngStatus, pantryInventory, onUpdatePantryInv }) {
   const t    = useT();
   const lang = useLang();
   const [sv,           setSv]          = useState("combined");
@@ -67,9 +67,28 @@ export default function ShoppingView({ recipes, ingState, sels, onShare, setIngS
   const confirmPurchases = () => {
     Object.keys(checkedIds).forEach(itemKey => {
       const item = allMissing.find(i => normIngName(i.name) === itemKey);
-      if (item) item.ids.forEach(id => setIngStatus(id, "full"));
+      if (!item) return;
+      // Mark as available in checklist
+      item.ids.forEach(id => setIngStatus(id, "full"));
+      // Sync to pantry inventory
+      if (onUpdatePantryInv) {
+        const combined = combineAmts(item.amounts);
+        const parsed   = parseAmt(combined);
+        if (parsed?.num > 0) {
+          const existing  = pantryInventory?.[itemKey];
+          const existQty  = parseFloat(existing?.qty) || 0;
+          const existUnit = existing?.unit || parsed.unit;
+          const finalQty  = existUnit === parsed.unit
+            ? existQty + parsed.num
+            : parsed.num; // different units: just use purchased amount
+          const finalUnit = existUnit === parsed.unit ? existUnit : parsed.unit;
+          onUpdatePantryInv(itemKey, { qty: String(Math.round(finalQty * 10) / 10), unit: finalUnit, lastUpdated: Date.now() });
+        }
+      }
     });
-    setCheckedIds({}); showToast(t('toast_shopping_done')); haptic([10, 50, 10]);
+    setCheckedIds({});
+    showToast(t('toast_shopping_done'));
+    haptic([10, 50, 10]);
   };
   const clearChecked = () => setCheckedIds({});
   const checkedCount = Object.keys(checkedIds).length;
@@ -132,7 +151,22 @@ export default function ShoppingView({ recipes, ingState, sels, onShare, setIngS
                 const combined  = combineAmts(item.amounts);
                 const multi     = item.amounts.length > 1;
                 return (
-                  <SwipeItem key={itemKey} onSwipeLeft={() => { item.ids.forEach(id => setIngStatus(id, "full")); showToast(t('toast_marked_available')); }}>
+                  <SwipeItem key={itemKey} onSwipeLeft={() => {
+                    item.ids.forEach(id => setIngStatus(id, "full"));
+                    if (onUpdatePantryInv) {
+                      const combined = combineAmts(item.amounts);
+                      const parsed = parseAmt(combined);
+                      if (parsed?.num > 0) {
+                        const existing = pantryInventory?.[itemKey];
+                        const existQty = parseFloat(existing?.qty) || 0;
+                        const existUnit = existing?.unit || parsed.unit;
+                        const finalQty = existUnit === parsed.unit ? existQty + parsed.num : parsed.num;
+                        const finalUnit = existUnit === parsed.unit ? existUnit : parsed.unit;
+                        onUpdatePantryInv(itemKey, { qty: String(Math.round(finalQty * 10) / 10), unit: finalUnit, lastUpdated: Date.now() });
+                      }
+                    }
+                    showToast(t('toast_marked_available'));
+                  }}>
                     <div onClick={() => markItem(item)}
                       style={{ display: "flex", alignItems: "center", padding: "11px 16px", gap: 12, background: isChecked ? "var(--acbg)" : "var(--sur)", cursor: "pointer", transition: "background .15s" }}>
                       <span style={{ fontSize: 18, flexShrink: 0 }}>{isChecked ? "✅" : item.status === "partial" ? "⚠️" : "⬜"}</span>

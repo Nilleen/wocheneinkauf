@@ -354,6 +354,7 @@ function AppContent({ authState }) {
       {state.showThisWeek && (
         <ThisWeekModal recipes={recipes} sels={sels} ingState={ingState} weekId={wid}
           onServChange={changeServings} onDayChange={changeDay} onToggleSel={toggleSel}
+          onMarkCooked={handleMarkCooked} profile={profile}
           onClearAll={() => { recipes.forEach(r => { if (getSel(sels, r.key).selected) toggleSel(r.key); }); dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" }); }}
           onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" })}
           onOpenRecipe={r => { dispatch({ type: "OPEN_RECIPE", recipe: r }); dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" }); }}/>
@@ -462,7 +463,9 @@ function AppContent({ authState }) {
             )}
             {state.view === "shopping" && (
               <ShoppingView recipes={recipes} ingState={ingState} sels={sels}
-                onShare={handleShare} setIngStatus={setIngStatus} pantryInventory={pantryInventory}/>
+                onShare={handleShare} setIngStatus={setIngStatus} pantryInventory={pantryInventory}
+                onUpdatePantryInv={guardWrite((k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`))}/>
+
             )}
             {state.view === "pantry" && (
               <PantryView recipes={recipes} ingState={ingState} customPantry={customPantry}

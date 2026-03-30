@@ -3,10 +3,11 @@ import { FLAGS, DAYS } from '../constants.js';
 import { getSel, weekLabel, estimateRecipePrice, haptic } from '../utils.js';
 import { useT, useLang } from '../LangContext.jsx';
 
-export default function ThisWeekModal({ recipes, sels, ingState, weekId, onServChange, onDayChange, onToggleSel, onClearAll, onClose, onOpenRecipe }) {
+export default function ThisWeekModal({ recipes, sels, ingState, weekId, onServChange, onDayChange, onToggleSel, onClearAll, onClose, onOpenRecipe, onMarkCooked, profile }) {
   const t    = useT();
   const lang = useLang();
   const [tab, setTab] = useState("overview");
+  const [cookConfirm, setCookConfirm] = useState(null); // recipe.key being confirmed
   const selRecipes = recipes.filter(r => getSel(sels, r.key).selected);
   const priceTotal = selRecipes.reduce((sum, r) => {
     const servings = getSel(sels, r.key).servings || 2;
@@ -78,6 +79,23 @@ export default function ThisWeekModal({ recipes, sels, ingState, weekId, onServC
                             style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--sur2)", border: "1px solid var(--bdr)", fontSize: 18, color: "var(--tx)", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                           <span style={{ fontSize: 10, color: "var(--tx3)", marginRight: 2 }}>{t('portions_abbrev')}</span>
                           <button className="btn" onClick={() => onToggleSel(recipe.key)} style={{ fontSize: 18, color: "var(--dan)", background: "none", padding: "0 3px" }}>✕</button>
+                          {onMarkCooked && (
+                            cookConfirm === recipe.key ? (
+                              <>
+                                <span style={{ fontSize: 10, color: "var(--tx3)" }}>{lang === "en" ? "Deduct pantry?" : "Vorrat abziehen?"}</span>
+                                <button className="btn" onClick={() => { onMarkCooked(recipe.key); setCookConfirm(null); }}
+                                  style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--ac)", color: "#fff", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", border: "none" }}>✓</button>
+                                <button className="btn" onClick={() => setCookConfirm(null)}
+                                  style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--sur2)", border: "1px solid var(--bdr)", color: "var(--tx2)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                              </>
+                            ) : (
+                              <button className="btn" onClick={() => setCookConfirm(recipe.key)}
+                                title={lang === "en" ? "Mark as cooked" : "Als gekocht markieren"}
+                                style={{ padding: "6px 8px", borderRadius: 10, fontSize: 14, background: profile?.lastCooked?.[recipe.key] === weekId ? "var(--acbg)" : "var(--sur2)", border: `1px solid ${profile?.lastCooked?.[recipe.key] === weekId ? "var(--ac)" : "var(--bdr)"}`, color: profile?.lastCooked?.[recipe.key] === weekId ? "var(--ac)" : "var(--tx)", flexShrink: 0 }}>
+                                {profile?.lastCooked?.[recipe.key] === weekId ? "✓🍳" : "🍳"}
+                              </button>
+                            )
+                          )}
                         </div>
                       </div>
                       {onDayChange && (
