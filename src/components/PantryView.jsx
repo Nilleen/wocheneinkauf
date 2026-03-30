@@ -1,13 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { normIngName, haptic } from '../utils.js';
 import { useT } from '../LangContext.jsx';
 import AddPantryModal from './AddPantryModal.jsx';
 
 export default function PantryView({ recipes, ingState, customPantry, pantryInventory, onAdd, onRemove, updateIng, setIngStatus, onUpdatePantryInv }) {
   const t = useT();
-  const [q,          setQ]          = useState("");
-  const [showAdd,    setShowAdd]    = useState(false);
-  const [editingQty, setEditingQty] = useState(null);
+  const [q,       setQ]       = useState("");
+  const [showAdd, setShowAdd] = useState(false);
   const lq = q.toLowerCase();
 
   const allItems = useMemo(() => {
@@ -35,40 +34,37 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
     if (next === "full") haptic(12);
   };
 
-  const saveQty = (normKey, qtyStr, unit) => {
-    if (!qtyStr.trim()) { onUpdatePantryInv(normKey, null); }
-    else { onUpdatePantryInv(normKey, { qty: qtyStr.trim(), unit: unit || "", lastUpdated: Date.now() }); }
-    setEditingQty(null);
-  };
+  const UNITS = ["g","kg","ml","l","Stück","EL","TL","Pck"];
+  const QTY_STEP = { kg: 0.1, l: 0.1, Stück: 1, EL: 1, TL: 1, Pck: 1 };
 
   function QtyEditor({ item }) {
-    const normKey   = normIngName(item.name);
-    const inv       = pantryInventory[normKey];
-    const isEditing = editingQty?.key === normKey;
-    const [localVal,  setLocalVal]  = useState(inv?.qty  || "");
-    const [localUnit, setLocalUnit] = useState(inv?.unit || "");
-    useEffect(() => { setLocalVal(inv?.qty || ""); setLocalUnit(inv?.unit || ""); }, [inv?.qty, inv?.unit]);
+    const normKey = normIngName(item.name);
+    const inv     = pantryInventory[normKey];
+    const qty     = parseFloat(inv?.qty) || 0;
+    const unit    = inv?.unit || "g";
+    const step    = QTY_STEP[unit] ?? 50;
 
-    if (isEditing) return (
-      <div style={{ display: "flex", gap: 4, alignItems: "center" }} onClick={e => e.stopPropagation()}>
-        <input autoFocus value={localVal} onChange={e => setLocalVal(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") saveQty(normKey, localVal, localUnit); if (e.key === "Escape") setEditingQty(null); }}
-          onBlur={() => saveQty(normKey, localVal, localUnit)}
-          style={{ width: 52, fontSize: 12, padding: "3px 5px", borderRadius: 6, textAlign: "center", border: "1.5px solid var(--ac)" }}
-          placeholder={t('qty_placeholder')}/>
-        <select value={localUnit} onChange={e => setLocalUnit(e.target.value)}
-          style={{ fontSize: 11, padding: "3px 4px", borderRadius: 6, border: "1px solid var(--bdr)", background: "var(--sur2)", maxWidth: 52 }}>
-          {["","g","kg","ml","l","Stück","EL","TL","Pck"].map(u => <option key={u} value={u}>{u || "—"}</option>)}
-        </select>
-      </div>
-    );
+    const update = (newQty, newUnit = unit) => {
+      const rounded = Math.max(0, Math.round(newQty * 10) / 10);
+      if (rounded === 0) onUpdatePantryInv(normKey, null);
+      else onUpdatePantryInv(normKey, { qty: String(rounded), unit: newUnit, lastUpdated: Date.now() });
+    };
+
+    const btnStyle = { width: 26, height: 26, borderRadius: "50%", border: "1px solid var(--bdr)", background: "var(--sur2)", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--tx2)", flexShrink: 0, lineHeight: 1 };
+
     return (
-      <div onClick={e => { e.stopPropagation(); setEditingQty({ key: normKey }); setLocalVal(inv?.qty || ""); setLocalUnit(inv?.unit || ""); }}
-        style={{ minWidth: 52, textAlign: "right", cursor: "text" }}>
-        {inv?.qty
-          ? <span style={{ fontSize: 12, fontWeight: "bold", color: "var(--ac)", background: "var(--acbg)", padding: "2px 6px", borderRadius: 6 }}>{inv.qty}{inv.unit}</span>
-          : <span style={{ fontSize: 11, color: "var(--bdr)", border: "1px dashed var(--bdr)", padding: "2px 6px", borderRadius: 6 }}>{t('btn_add_qty')}</span>
-        }
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={e => e.stopPropagation()}>
+        <button style={btnStyle} onClick={() => update(qty - step)}>−</button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 46 }}>
+          <span style={{ fontSize: 13, fontWeight: "bold", color: qty > 0 ? "var(--ac)" : "var(--tx3)", lineHeight: 1.2 }}>
+            {qty > 0 ? qty : "0"}
+          </span>
+          <select value={unit} onChange={e => update(qty, e.target.value)}
+            style={{ fontSize: 10, border: "none", background: "transparent", color: "var(--tx3)", padding: 0, cursor: "pointer", width: "100%", textAlign: "center" }}>
+            {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <button style={btnStyle} onClick={() => update(qty + step)}>+</button>
       </div>
     );
   }

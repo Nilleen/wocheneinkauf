@@ -168,6 +168,7 @@ export default function RecipeModal({ recipe, ingState, sels, onClose, onServCha
             {recipe.instructions.map(s => {
               const photoB64 = recipe.stepPhotos?.[s.step];
               const stepTitle = lang === "en" && s.titleEN ? s.titleEN : s.title;
+              const stepText  = lang === "en" && s.textEN  ? s.textEN  : s.text;
               return (
                 <div key={s.step} style={{ marginBottom: 16, padding: "10px 14px", background: "var(--sur2)", borderRadius: 10 }}>
                   {photoB64 && <img src={`data:image/jpeg;base64,${photoB64}`} alt={`Step ${s.step}`} style={{ width: "100%", borderRadius: 10, height: 180, objectFit: "cover", marginBottom: 8 }}/>}
@@ -175,7 +176,7 @@ export default function RecipeModal({ recipe, ingState, sels, onClose, onServCha
                     <div style={{ width: 26, height: 26, borderRadius: "50%", background: recipe.color, color: "#fff", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: "bold" }}>{s.step}</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: "bold", color: "var(--tx)", marginBottom: 3 }}>{stepTitle}</div>
-                      <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--tx2)" }}>{s.text}</p>
+                      <p style={{ fontSize: 13, lineHeight: 1.6, color: "var(--tx2)" }}>{stepText}</p>
                     </div>
                   </div>
                 </div>

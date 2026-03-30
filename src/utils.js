@@ -1,4 +1,4 @@
-import { SPICES, ING_ALIASES, ING_SPLITS, REWE_PRICES, FLAGS } from './constants.js';
+import { SPICES, ING_ALIASES, ING_SPLITS, REWE_PRICES, REWE_PKG_SIZES, FLAGS } from './constants.js';
 
 // ── ISO WEEK UTILITIES ─────────────────────────────────────────────────────
 export function getISOWeek(d = new Date()) {
@@ -63,12 +63,24 @@ export function normStr(s) {
 }
 
 // ── PRICE HELPERS ─────────────────────────────────────────────────────────
+// Convert common recipe units to grams or ml for proportional calculation
+function toBaseUnit(num, unit) {
+  const u = (unit || "").toLowerCase();
+  if (!u || u === "g")   return { val: num,        base: "g"  };
+  if (u === "kg")        return { val: num * 1000,  base: "g"  };
+  if (u === "ml")        return { val: num,         base: "ml" };
+  if (u === "l")         return { val: num * 1000,  base: "ml" };
+  if (u === "el")        return { val: num * 15,    base: "ml" }; // tablespoon ≈ 15ml
+  if (u === "tl")        return { val: num * 5,     base: "ml" }; // teaspoon ≈ 5ml
+  return null;
+}
+
 // Fuzzy price lookup — exact match first, then substring match
 export function fuzzyPriceLookup(normName) {
-  if (REWE_PRICES[normName] != null) return { price: REWE_PRICES[normName], fuzzy: false };
+  if (REWE_PRICES[normName] != null) return { price: REWE_PRICES[normName], pkg: REWE_PKG_SIZES[normName] || null, fuzzy: false };
   for (const [k, v] of Object.entries(REWE_PRICES)) {
     if (k.length > 3 && (normName.includes(k) || k.includes(normName)))
-      return { price: v, fuzzy: true };
+      return { price: v, pkg: REWE_PKG_SIZES[k] || null, fuzzy: true };
   }
   return null;
 }
@@ -82,10 +94,29 @@ export function estimateRecipePrice(recipe, servings = 2) {
   let hasFuzzy = false;
 
   recipe.ingredients.forEach(ing => {
+    // Skip spices — negligible cost, hard to calculate
+    if (ing.aisle === "spices") return;
+
     const k = normIngName(ing.name);
     const match = fuzzyPriceLookup(k);
-    if (match) { total += match.price * scale; if (match.fuzzy) hasFuzzy = true; }
-    else unknownNames.push(ing.name);
+    if (match) {
+      let cost = match.price;
+      // Proportional calculation: if pack size known and recipe has a measurable amount
+      if (match.pkg && ing.amount) {
+        const parsed = parseAmt(ing.amount);
+        if (parsed) {
+          const ingBase = toBaseUnit(parsed.num, parsed.unit);
+          const pkgBase = toBaseUnit(match.pkg.size, match.pkg.unit);
+          if (ingBase && pkgBase && ingBase.base === pkgBase.base && pkgBase.val > 0) {
+            cost = match.price * (ingBase.val / pkgBase.val);
+          }
+        }
+      }
+      total += cost * scale;
+      if (match.fuzzy) hasFuzzy = true;
+    } else {
+      unknownNames.push(ing.name);
+    }
   });
 
   // Pantry items at 20% of pack price (used in small amounts)
