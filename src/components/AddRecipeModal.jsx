@@ -10,7 +10,7 @@ export default function AddRecipeModal({ onSave, onClose }) {
   const [diff,  setDiff]  = useState("Einfach");
   const [kcal,  setKcal]  = useState("");
   const [ptype, setPtype] = useState("vegetarian");
-  const [ings,  setIngs]  = useState([{ n: "", a: "", s: "produce" }]);
+  const [ings,  setIngs]  = useState([{ n: "", an: "", au: "g", s: "produce" }]);
   const [step,  setStep]  = useState(0);
 
   const addIng  = ()       => setIngs(p => [...p, { n: "", a: "", s: "produce" }]);
@@ -24,7 +24,7 @@ export default function AddRecipeModal({ onSave, onClose }) {
     const ingMap = {};
     ings.filter(i => i.n.trim()).forEach((i, idx) => {
       const id = `${key}_${idx + 1}`;
-      ingMap[id] = { name: i.n.trim(), amount: i.a.trim() || "nach Bedarf", aisle: i.s };
+      ingMap[id] = { name: i.n.trim(), amount: i.an.trim() ? `${i.an.trim()}${i.au}` : "nach Bedarf", aisle: i.s };
     });
     onSave({ key, order: 9999, emoji, color, name: name.trim(), description: "", time, difficulty: diff, kcal: kcal ? parseInt(kcal) : null, pantryItems: [], ingredients: ingMap, instructions: [] });
     onClose();
@@ -78,8 +78,14 @@ export default function AddRecipeModal({ onSave, onClose }) {
                 <div key={i} style={{ display: "flex", gap: 5, alignItems: "center" }}>
                   <input placeholder={t('ingredient_placeholder')} value={ing.n} onChange={e => updIng(i, "n", e.target.value)}
                     style={{ flex: 2, padding: "8px 10px", fontSize: 13, borderRadius: 8, minWidth: 0 }}/>
-                  <input placeholder="300g" value={ing.a} onChange={e => updIng(i, "a", e.target.value)}
-                    style={{ flex: "0 0 64px", padding: "8px 6px", fontSize: 13, borderRadius: 8, minWidth: 0 }}/>
+                  <div style={{ display: "flex", flex: "0 0 96px", minWidth: 0 }}>
+                    <input type="number" placeholder="300" value={ing.an} onChange={e => updIng(i, "an", e.target.value)}
+                      style={{ flex: 1, width: 0, padding: "8px 4px", fontSize: 13, borderRadius: "8px 0 0 8px", minWidth: 0, textAlign: "center" }}/>
+                    <select value={ing.au} onChange={e => updIng(i, "au", e.target.value)}
+                      style={{ width: 42, padding: "8px 2px", fontSize: 11, borderRadius: "0 8px 8px 0", borderLeft: "none", textAlign: "center" }}>
+                      {["g","kg","ml","l","Stück","EL","TL","Pck"].map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
                   <select value={ing.s} onChange={e => updIng(i, "s", e.target.value)}
                     style={{ flex: 1, padding: "8px 4px", fontSize: 11, borderRadius: 8, minWidth: 0 }}>
                     {AISLES_OPT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}

@@ -20,6 +20,8 @@ export default function RecipeCard({ recipe, ingState, sels, profile, currentWee
   const pct    = recipe.ingredients.length ? Math.round((done / recipe.ingredients.length) * 100) : 0;
   const price  = FLAGS.priceEstimates ? formatPrice(recipe, servings) : null;
   const [flash, setFlash] = useState("");
+  const [cookConfirm, setCookConfirm] = useState(false);
+  const cookedThisWeek = lastCooked === currentWeekId;
   const longPressTimer = useRef();
   const startX = useRef(0);
   const moved  = useRef(false);
@@ -117,11 +119,28 @@ export default function RecipeCard({ recipe, ingState, sels, profile, currentWee
               </div>
             )}
             {isSel && onMarkCooked && (
-              <button className="btn" title={lang === "en" ? "Mark as cooked & deduct pantry" : "Als gekocht markieren & Vorrat abziehen"}
-                onClick={() => { haptic([10,30,10]); onMarkCooked(recipe.key); }}
-                style={{ padding: "7px 10px", borderRadius: 10, fontSize: 14, background: "var(--sur2)", border: "1px solid var(--bdr)", flexShrink: 0 }}>
-                🍳
-              </button>
+              cookedThisWeek ? (
+                <div style={{ padding: "7px 10px", borderRadius: 10, fontSize: 13, background: "var(--acbg)", border: "1px solid var(--ac)", color: "var(--ac)", flexShrink: 0, lineHeight: 1.3, textAlign: "center" }}>
+                  ✓🍳
+                </div>
+              ) : cookConfirm ? (
+                <div style={{ display: "flex", gap: 4, alignItems: "center", flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                  <span style={{ fontSize: 10, color: "var(--tx3)", maxWidth: 70, lineHeight: 1.2 }}>
+                    {lang === "en" ? "Deduct pantry?" : "Vorrat abziehen?"}
+                  </span>
+                  <button className="btn" onClick={() => { haptic([10,30,10]); onMarkCooked(recipe.key); setCookConfirm(false); }}
+                    style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--ac)", color: "#fff", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", border: "none" }}>✓</button>
+                  <button className="btn" onClick={() => setCookConfirm(false)}
+                    style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--sur2)", border: "1px solid var(--bdr)", color: "var(--tx2)", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                </div>
+              ) : (
+                <button className="btn"
+                  title={lang === "en" ? "Mark as cooked & deduct pantry" : "Als gekocht markieren & Vorrat abziehen"}
+                  onClick={e => { e.stopPropagation(); setCookConfirm(true); }}
+                  style={{ padding: "7px 10px", borderRadius: 10, fontSize: 14, background: "var(--sur2)", border: "1px solid var(--bdr)", flexShrink: 0 }}>
+                  🍳
+                </button>
+              )
             )}
           </div>
           {isSel && onDayChange && (

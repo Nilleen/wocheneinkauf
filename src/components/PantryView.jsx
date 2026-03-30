@@ -43,6 +43,8 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
     const qty     = parseFloat(inv?.qty) || 0;
     const unit    = inv?.unit || "g";
     const step    = QTY_STEP[unit] ?? 50;
+    const [editing, setEditing] = useState(false);
+    const [draft,   setDraft]   = useState("");
 
     const update = (newQty, newUnit = unit) => {
       const rounded = Math.max(0, Math.round(newQty * 10) / 10);
@@ -50,15 +52,35 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
       else onUpdatePantryInv(normKey, { qty: String(rounded), unit: newUnit, lastUpdated: Date.now() });
     };
 
+    const commitDraft = () => {
+      const n = parseFloat(draft.replace(",", "."));
+      if (!isNaN(n)) update(n);
+      setEditing(false);
+    };
+
     const btnStyle = { width: 26, height: 26, borderRadius: "50%", border: "1px solid var(--bdr)", background: "var(--sur2)", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--tx2)", flexShrink: 0, lineHeight: 1 };
 
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={e => e.stopPropagation()}>
         <button style={btnStyle} onClick={() => update(qty - step)}>−</button>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 46 }}>
-          <span style={{ fontSize: 13, fontWeight: "bold", color: qty > 0 ? "var(--ac)" : "var(--tx3)", lineHeight: 1.2 }}>
-            {qty > 0 ? qty : "0"}
-          </span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 50 }}>
+          {editing ? (
+            <input
+              autoFocus type="text" inputMode="decimal"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={commitDraft}
+              onKeyDown={e => { if (e.key === "Enter") commitDraft(); if (e.key === "Escape") setEditing(false); }}
+              style={{ width: 46, textAlign: "center", fontSize: 13, fontWeight: "bold", border: "1.5px solid var(--ac)", borderRadius: 6, padding: "2px 0", background: "var(--sur)", color: "var(--tx)" }}
+            />
+          ) : (
+            <span
+              onClick={() => { setDraft(String(qty || "")); setEditing(true); }}
+              style={{ fontSize: 13, fontWeight: "bold", color: qty > 0 ? "var(--ac)" : "var(--tx3)", lineHeight: 1.2, cursor: "text", minWidth: 30, textAlign: "center", padding: "1px 4px", borderRadius: 4, border: "1px dashed transparent" }}
+              title="Tap to edit">
+              {qty > 0 ? qty : "—"}
+            </span>
+          )}
           <select value={unit} onChange={e => update(qty, e.target.value)}
             style={{ fontSize: 10, border: "none", background: "transparent", color: "var(--tx3)", padding: 0, cursor: "pointer", width: "100%", textAlign: "center" }}>
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -77,7 +99,7 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
         <div style={{ width: 4, height: 32, borderRadius: 2, background: isHave ? item.color : "var(--bdr)", flexShrink: 0, transition: "background .2s" }}/>
         <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setItemStatus(item, isHave ? "none" : "full")}>
           <div style={{ fontSize: 14, color: isHave ? "var(--tx)" : "var(--tx3)", fontWeight: isHave ? "bold" : "normal" }}>{item.name}</div>
-          <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 1, lineHeight: 1.3 }}>{item.recipes.slice(0, 3).join(", ")}{item.recipes.length > 3 ? ` +${item.recipes.length - 3}` : ""}</div>
+          <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 1, lineHeight: 1.3 }}>{item.recipes.slice(0, 3).map(n => n.split(" ").slice(0, 3).join(" ")).join(", ")}{item.recipes.length > 3 ? ` +${item.recipes.length - 3}` : ""}</div>
         </div>
         <QtyEditor item={item}/>
         <button onClick={() => setItemStatus(item, isHave ? "none" : "full")}
