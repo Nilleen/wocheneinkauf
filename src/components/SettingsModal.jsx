@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useT } from '../LangContext.jsx';
 import { FB } from '../firebase.js';
 import HistoryModal from './HistoryModal.jsx';
@@ -6,18 +6,12 @@ import HistoryModal from './HistoryModal.jsx';
 export default function SettingsModal({ darkMode, onDarkMode, lang, onLangChange, history, authState, onClose }) {
   const t = useT();
   const [showH,    setShowH]    = useState(false);
-  const [joinCode, setJoinCode] = useState("");
   const [codeCopied, setCodeCopied] = useState(false);
 
   const isMember = authState?.status === "member";
   const isGuest  = authState?.status === "guest";
   const user     = authState?.user;
-
-  // Load join code for members
-  useEffect(() => {
-    if (!isMember) return;
-    FB.getJoinCode().then(c => { if (c) setJoinCode(c); });
-  }, [isMember]);
+  const joinCode = authState?.householdCode || "";
 
   const copyCode = () => {
     navigator.clipboard?.writeText(joinCode);

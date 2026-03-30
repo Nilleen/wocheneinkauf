@@ -66,7 +66,7 @@ export default function App() {
     </div>
   );
   if (authState.status === "none")    return <LoginScreen />;
-  if (authState.status === "setup" || authState.status === "pending") return <JoinCodeModal />;
+  if (authState.status === "pending") return <JoinCodeModal />;
 
   // canWrite is true only for full household members
   const canWrite = authState.status === "member";
