@@ -5,6 +5,7 @@ import { FB } from './firebase.js';
 import { showToast } from './toast.js';
 import { initialState, appReducer } from './store.js';
 import { LangContext, useT } from './LangContext.jsx';
+import { useAuth } from './AuthContext.jsx';
 
 import ToastManager    from './components/ToastManager.jsx';
 import RecipeModal     from './components/RecipeModal.jsx';
@@ -17,6 +18,8 @@ import RecipesView     from './components/RecipesView.jsx';
 import ChecklistView   from './components/ChecklistView.jsx';
 import ShoppingView    from './components/ShoppingView.jsx';
 import PantryView      from './components/PantryView.jsx';
+import LoginScreen     from './components/LoginScreen.jsx';
+import JoinCodeModal   from './components/JoinCodeModal.jsx';
 import { SkeletonCards } from './components/SmallComponents.jsx';
 import { AISLES } from './constants.js';
 
@@ -51,9 +54,26 @@ async function runMigration() {
 }
 
 export default function App() {
+  const authState = useAuth();
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const lw = useRef(false);
+
+  // Auth gates — show login / join screens before the main app
+  if (authState.status === "loading") return (
+    <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#1a2e1f" }}>
+      <div style={{ fontSize: 48 }}>🛒</div>
+    </div>
+  );
+  if (authState.status === "none")    return <LoginScreen />;
+  if (authState.status === "setup" || authState.status === "pending") return <JoinCodeModal />;
+
+  // canWrite is true only for full household members
+  const canWrite = authState.status === "member";
+  const guardWrite = (fn) => (...args) => {
+    if (!canWrite) { showToast("🔒 Sign in with a join code to edit"); return; }
+    return fn(...args);
+  };
 
   // ── Online/offline detection ──
   useEffect(() => {
@@ -155,60 +175,60 @@ export default function App() {
     return () => unsubs.forEach(u => u());
   }, [state.weekId]);
 
-  // ── Update handlers ──
-  const updateIng = useCallback((id, field, value) => {
+  // ── Update handlers (all writes guarded) ──
+  const updateIng = guardWrite(useCallback((id, field, value) => {
     lw.current = true;
     dispatch({ type: "PATCH_ING", id, patch: { [field]: value } });
     FB.update(`${FB.weekState(state.weekId)}/${id}`, { [field]: value }).then(() => setTimeout(() => lw.current = false, 400));
-  }, [state.weekId]);
+  }, [state.weekId]));
 
-  const setIngStatus = useCallback((id, status) => {
+  const setIngStatus = guardWrite(useCallback((id, status) => {
     lw.current = true;
     dispatch({ type: "PATCH_ING", id, patch: { status } });
     FB.update(`${FB.weekState(state.weekId)}/${id}`, { status }).then(() => setTimeout(() => lw.current = false, 400));
-  }, [state.weekId]);
+  }, [state.weekId]));
 
-  const saveIngName = useCallback((rk, id, name) => {
+  const saveIngName = guardWrite(useCallback((rk, id, name) => {
     FB.update(`${FB.recipes()}/${rk}/ingredients/${id}`, { name });
-  }, []);
+  }, []));
 
-  const toggleSel = useCallback((key) => {
+  const toggleSel = guardWrite(useCallback((key) => {
     const cur  = getSel(state.sels, key);
     const next = { ...cur, selected: !cur.selected };
     dispatch({ type: "PATCH_SEL", key, patch: { selected: next.selected } });
     FB.set(`${FB.weekSel(state.weekId)}/${key}`, next);
-  }, [state.sels, state.weekId]);
+  }, [state.sels, state.weekId]));
 
-  const changeServings = useCallback((key, srv) => {
+  const changeServings = guardWrite(useCallback((key, srv) => {
     const cur  = getSel(state.sels, key);
     const next = { ...cur, servings: srv };
     dispatch({ type: "PATCH_SEL", key, patch: { servings: srv } });
     FB.set(`${FB.weekSel(state.weekId)}/${key}`, next);
-  }, [state.sels, state.weekId]);
+  }, [state.sels, state.weekId]));
 
-  const changeDay = useCallback((key, day) => {
+  const changeDay = guardWrite(useCallback((key, day) => {
     const cur  = getSel(state.sels, key);
     const next = { ...cur, day: day || null };
     dispatch({ type: "PATCH_SEL", key, patch: { day: day || null } });
     FB.set(`${FB.weekSel(state.weekId)}/${key}`, next);
-  }, [state.sels, state.weekId]);
+  }, [state.sels, state.weekId]));
 
-  const toggleFav = useCallback((key) => {
+  const toggleFav = guardWrite(useCallback((key) => {
     const next = !state.profile.favourites?.[key];
     dispatch({ type: "SET_FAV", key, v: next });
     FB.set(`${FB.favs()}/${key}`, next || null);
     if (next) showToast(state.lang === "en" ? "⭐ Favourite saved" : "⭐ Favorit gespeichert");
-  }, [state.profile.favourites, state.lang]);
+  }, [state.profile.favourites, state.lang]));
 
-  const setRating = useCallback((key, v) => {
+  const setRating = guardWrite(useCallback((key, v) => {
     dispatch({ type: "SET_RATING", key, v });
     FB.set(`${FB.profile()}/ratings/${key}`, v);
-  }, []);
+  }, []));
 
-  const setNote = useCallback((key, v) => {
+  const setNote = guardWrite(useCallback((key, v) => {
     dispatch({ type: "SET_NOTE", key, v });
     FB.set(`${FB.profile()}/notes/${key}`, v);
-  }, []);
+  }, []));
 
   // ── Reset / archive ──
   const handleReset = () => {
@@ -353,7 +373,7 @@ export default function App() {
           onConfirm={handleReset}
           onCancel={() => dispatch({ type: "HIDE_MODAL", modal: "showReset" })}/>
       )}
-      {state.showSettings && <SettingsModal darkMode={darkMode} onDarkMode={setDarkMode} lang={lang} onLangChange={setLang} history={history} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showSettings" })}/>}
+      {state.showSettings && <SettingsModal darkMode={darkMode} onDarkMode={guardWrite(setDarkMode)} lang={lang} onLangChange={guardWrite(setLang)} history={history} authState={authState} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showSettings" })}/>}
       {state.showClaude  && <ClaudeModal recipes={recipes} ingState={ingState} sels={sels} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showClaude" })}/>}
 
       {/* Header */}
@@ -446,9 +466,9 @@ export default function App() {
             {state.view === "pantry" && (
               <PantryView recipes={recipes} ingState={ingState} customPantry={customPantry}
                 pantryInventory={pantryInventory} updateIng={updateIng} setIngStatus={setIngStatus}
-                onAdd={(id, d) => FB.set(`${FB.pantryCustom()}/${id}`, d)}
-                onRemove={id => FB.remove(`${FB.pantryCustom()}/${id}`)}
-                onUpdatePantryInv={(k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`)}/>
+                onAdd={guardWrite((id, d) => FB.set(`${FB.pantryCustom()}/${id}`, d))}
+                onRemove={guardWrite(id => FB.remove(`${FB.pantryCustom()}/${id}`))}
+                onUpdatePantryInv={guardWrite((k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`))}/>
             )}
           </>
         )}
