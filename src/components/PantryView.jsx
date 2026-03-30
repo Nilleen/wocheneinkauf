@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { normIngName, haptic } from '../utils.js';
+import { useT } from '../LangContext.jsx';
 import AddPantryModal from './AddPantryModal.jsx';
 
 export default function PantryView({ recipes, ingState, customPantry, pantryInventory, onAdd, onRemove, updateIng, setIngStatus, onUpdatePantryInv }) {
+  const t = useT();
   const [q,          setQ]          = useState("");
   const [showAdd,    setShowAdd]    = useState(false);
   const [editingQty, setEditingQty] = useState(null);
@@ -53,7 +55,7 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
           onKeyDown={e => { if (e.key === "Enter") saveQty(normKey, localVal, localUnit); if (e.key === "Escape") setEditingQty(null); }}
           onBlur={() => saveQty(normKey, localVal, localUnit)}
           style={{ width: 52, fontSize: 12, padding: "3px 5px", borderRadius: 6, textAlign: "center", border: "1.5px solid var(--ac)" }}
-          placeholder="Menge"/>
+          placeholder={t('qty_placeholder')}/>
         <select value={localUnit} onChange={e => setLocalUnit(e.target.value)}
           style={{ fontSize: 11, padding: "3px 4px", borderRadius: 6, border: "1px solid var(--bdr)", background: "var(--sur2)", maxWidth: 52 }}>
           {["","g","kg","ml","l","Stück","EL","TL","Pck"].map(u => <option key={u} value={u}>{u || "—"}</option>)}
@@ -65,7 +67,7 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
         style={{ minWidth: 52, textAlign: "right", cursor: "text" }}>
         {inv?.qty
           ? <span style={{ fontSize: 12, fontWeight: "bold", color: "var(--ac)", background: "var(--acbg)", padding: "2px 6px", borderRadius: 6 }}>{inv.qty}{inv.unit}</span>
-          : <span style={{ fontSize: 11, color: "var(--bdr)", border: "1px dashed var(--bdr)", padding: "2px 6px", borderRadius: 6 }}>+ Menge</span>
+          : <span style={{ fontSize: 11, color: "var(--bdr)", border: "1px dashed var(--bdr)", padding: "2px 6px", borderRadius: 6 }}>{t('btn_add_qty')}</span>
         }
       </div>
     );
@@ -97,20 +99,20 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
     <div style={{ padding: "12px 12px 20px", maxWidth: 660, margin: "0 auto" }}>
       {showAdd && <AddPantryModal onAdd={data => { onAdd("cp_" + Date.now(), data); setShowAdd(false); }} onClose={() => setShowAdd(false)}/>}
       <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
-        <input className="sbar" style={{ flex: 1, marginBottom: 0 }} placeholder="🔍 Vorrat suchen…" value={q} onChange={e => setQ(e.target.value)}/>
-        <button className="btn" onClick={() => setShowAdd(true)} style={{ padding: "9px 14px", borderRadius: 10, background: "var(--ac)", color: "#fff", fontSize: 13, fontWeight: "bold", flexShrink: 0 }}>+ Add</button>
+        <input className="sbar" style={{ flex: 1, marginBottom: 0 }} placeholder={t('search_pantry')} value={q} onChange={e => setQ(e.target.value)}/>
+        <button className="btn" onClick={() => setShowAdd(true)} style={{ padding: "9px 14px", borderRadius: 10, background: "var(--ac)", color: "#fff", fontSize: 13, fontWeight: "bold", flexShrink: 0 }}>{t('btn_add')}</button>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center", padding: "8px 12px", background: "var(--acbg)", borderRadius: 10, border: "1px solid var(--bdr)" }}>
         <div style={{ flex: 1, height: 6, background: "var(--bdr)", borderRadius: 3, overflow: "hidden" }}>
           <div style={{ height: "100%", width: totalCount ? `${(stockedCount / totalCount) * 100}%` : "0%", background: "var(--ac)", transition: "width .4s", borderRadius: 3 }}/>
         </div>
-        <span style={{ fontSize: 12, color: "var(--ac)", fontWeight: "bold", flexShrink: 0 }}>{stockedCount}/{totalCount} vorrätig</span>
+        <span style={{ fontSize: 12, color: "var(--ac)", fontWeight: "bold", flexShrink: 0 }}>{t('stocked_count', { stocked: stockedCount, total: totalCount })}</span>
       </div>
-      <p style={{ fontSize: 11, color: "var(--tx3)", marginBottom: 10, paddingLeft: 2 }}>Tippe ✅/☐ um Status zu ändern · Tippe Mengenfeld um Vorrat einzutragen</p>
+      <p style={{ fontSize: 11, color: "var(--tx3)", marginBottom: 10, paddingLeft: 2 }}>{t('hint_pantry')}</p>
 
       {custom.length > 0 && (
         <div className="card" style={{ marginBottom: 10 }}>
-          <div style={{ padding: "8px 14px", background: "var(--sur2)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--tx2)", letterSpacing: .5, textTransform: "uppercase" }}>Eigene Einträge ({custom.length})</div>
+          <div style={{ padding: "8px 14px", background: "var(--sur2)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--tx2)", letterSpacing: .5, textTransform: "uppercase" }}>{t('section_custom', { count: custom.length })}</div>
           {custom.map(([id, item], i) => (
             <div key={id} style={{ display: "flex", alignItems: "center", padding: "10px 14px", gap: 10, borderBottom: i < custom.length - 1 ? "1px solid var(--bdr2)" : "none" }}>
               <div style={{ width: 4, height: 32, borderRadius: 2, background: "var(--ac)", flexShrink: 0 }}/>
@@ -127,18 +129,18 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
 
       {stocked.length > 0 && (
         <div className="card" style={{ marginBottom: 10 }}>
-          <div style={{ padding: "8px 14px", background: "var(--acbg)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--ac)", letterSpacing: .5, textTransform: "uppercase" }}>✅ Vorrätig ({stocked.length})</div>
+          <div style={{ padding: "8px 14px", background: "var(--acbg)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--ac)", letterSpacing: .5, textTransform: "uppercase" }}>{t('section_stocked', { count: stocked.length })}</div>
           {stocked.map((item, i) => <div key={item.id} style={{ borderBottom: i < stocked.length - 1 ? "1px solid var(--bdr2)" : "none" }}><ItemRow item={item}/></div>)}
         </div>
       )}
 
       {notStocked.length > 0 && (
         <div className="card">
-          <div style={{ padding: "8px 14px", background: "var(--sur2)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--tx2)", letterSpacing: .5, textTransform: "uppercase" }}>Nicht vorrätig ({notStocked.length})</div>
+          <div style={{ padding: "8px 14px", background: "var(--sur2)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--tx2)", letterSpacing: .5, textTransform: "uppercase" }}>{t('section_not_stocked', { count: notStocked.length })}</div>
           {notStocked.map((item, i) => <div key={item.id} style={{ borderBottom: i < notStocked.length - 1 ? "1px solid var(--bdr2)" : "none" }}><ItemRow item={item}/></div>)}
         </div>
       )}
-      {allItems.length === 0 && q && <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--tx3)" }}>Keine Zutaten gefunden.</div>}
+      {allItems.length === 0 && q && <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--tx3)" }}>{t('no_items')}</div>}
     </div>
   );
 }

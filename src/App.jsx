@@ -4,6 +4,7 @@ import { weekId, weekLabel, weekShort, getSel, fromFB, buildInit, buildDefSel, n
 import { FB } from './firebase.js';
 import { showToast } from './toast.js';
 import { initialState, appReducer } from './store.js';
+import { LangContext, useT } from './LangContext.jsx';
 
 import ToastManager    from './components/ToastManager.jsx';
 import RecipeModal     from './components/RecipeModal.jsx';
@@ -77,6 +78,7 @@ export default function App() {
   }, [state.darkMode]);
 
   const setDarkMode = m => { dispatch({ type: "SET_DARK_MODE", v: m }); FB.set(`${FB.settings()}/darkMode`, m); };
+  const setLang     = m => { dispatch({ type: "SET_LANG",      v: m }); FB.set(`${FB.settings()}/lang`,     m); };
 
   // ── Android back button ──
   useEffect(() => {
@@ -145,7 +147,10 @@ export default function App() {
     sub(FB.pantryCustom(), d => dispatch({ type: "SET_CUSTOM_PANTRY", v: d || {} }));
     sub(FB.pantryInv(),    d => dispatch({ type: "SET_PANTRY_INV",    v: d || {} }));
     sub(FB.history(),      d => dispatch({ type: "SET_HISTORY",       v: d || {} }));
-    sub(FB.settings(),     d => { if (d?.darkMode) dispatch({ type: "SET_DARK_MODE", v: d.darkMode }); });
+    sub(FB.settings(),     d => {
+      if (d?.darkMode) dispatch({ type: "SET_DARK_MODE", v: d.darkMode });
+      if (d?.lang)     dispatch({ type: "SET_LANG",      v: d.lang });
+    });
 
     return () => unsubs.forEach(u => u());
   }, [state.weekId]);
@@ -192,8 +197,8 @@ export default function App() {
     const next = !state.profile.favourites?.[key];
     dispatch({ type: "SET_FAV", key, v: next });
     FB.set(`${FB.favs()}/${key}`, next || null);
-    if (next) showToast("⭐ Favorit gespeichert");
-  }, [state.profile.favourites]);
+    if (next) showToast(state.lang === "en" ? "⭐ Favourite saved" : "⭐ Favorit gespeichert");
+  }, [state.profile.favourites, state.lang]);
 
   const setRating = useCallback((key, v) => {
     dispatch({ type: "SET_RATING", key, v });
@@ -218,7 +223,7 @@ export default function App() {
     FB.set(FB.weekState(wid), fresh).then(() => setTimeout(() => lw.current = false, 500));
     dispatch({ type: "SET_ING_STATE", v: fresh });
     dispatch({ type: "HIDE_MODAL", modal: "showReset" });
-    showToast(`✓ Zurückgesetzt — ${weekShort(wid)} archiviert`);
+    showToast(state.lang === "en" ? `✓ Reset — ${weekShort(wid)} archived` : `✓ Zurückgesetzt — ${weekShort(wid)} archiviert`);
   };
 
   // ── Week navigation ──
@@ -259,23 +264,27 @@ export default function App() {
     await FB.set(`${FB.weekSel(state.weekId)}/${recipe.key}`, { selected: false, servings: 2 });
   };
 
-  const { recipes, ingState, sels, profile, customPantry, pantryInventory, history, darkMode, loading, sync, weekId: wid, weekOffset } = state;
+  const { recipes, ingState, sels, profile, customPantry, pantryInventory, history, darkMode, lang, loading, sync, weekId: wid, weekOffset } = state;
 
   const selIngAll    = useMemo(() => recipes.filter(r => getSel(sels, r.key).selected).flatMap(r => r.ingredients), [recipes, sels]);
   const fullCount    = selIngAll.filter(i => ingState[i.id]?.status === "full").length;
   const missingCount = selIngAll.filter(i => ingState[i.id]?.status !== "full").length;
   const total        = selIngAll.length;
   const sc = { connecting: "#f0a500", synced: "#4a7c59", syncing: "#f0a500", error: "#c0392b" }[sync] || "#f0a500";
-  const st = { connecting: "Verbinde…", synced: "Synchronisiert ✓", syncing: "Speichert…", error: "Fehler" }[sync];
+  const EN = lang === "en";
+  const st = EN
+    ? { connecting: "Connecting…", synced: "Synced ✓", syncing: "Saving…", error: "Error" }[sync]
+    : { connecting: "Verbinde…",   synced: "Synchronisiert ✓", syncing: "Speichert…", error: "Fehler" }[sync];
 
   const TABS = [
-    { id: "recipes",   icon: "📖", label: "Rezepte" },
-    { id: "checklist", icon: "📋", label: "Checkliste" },
-    { id: "shopping",  icon: "🛒", label: `Einkauf${missingCount > 0 ? ` (${missingCount})` : ""}` },
-    { id: "pantry",    icon: "🥦", label: "Vorrat" },
+    { id: "recipes",   icon: "📖", label: EN ? "Recipes"   : "Rezepte" },
+    { id: "checklist", icon: "📋", label: EN ? "Checklist" : "Checkliste" },
+    { id: "shopping",  icon: "🛒", label: `${EN ? "Shopping" : "Einkauf"}${missingCount > 0 ? ` (${missingCount})` : ""}` },
+    { id: "pantry",    icon: "🥦", label: EN ? "Pantry"    : "Vorrat" },
   ];
 
   return (
+    <LangContext.Provider value={lang}>
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <ToastManager/>
 
@@ -294,13 +303,15 @@ export default function App() {
           onOpenRecipe={r => { dispatch({ type: "OPEN_RECIPE", recipe: r }); dispatch({ type: "HIDE_MODAL", modal: "showThisWeek" }); }}/>
       )}
       {state.showReset && (
-        <ConfirmModal emoji="🔄" title="Alle Status zurücksetzen?" confirmLabel="Zurücksetzen & Archivieren"
-          body={`Setzt alles auf ❌ und archiviert ${weekShort(wid)}.`}
-          extra={Object.keys(history).length > 0 && <div style={{ marginTop: 8, fontSize: 12, color: "var(--tx3)" }}>📚 {Object.keys(history).length} Woche(n) archiviert</div>}
+        <ConfirmModal emoji="🔄"
+          title={EN ? "Reset all statuses?" : "Alle Status zurücksetzen?"}
+          confirmLabel={EN ? "Reset & Archive" : "Zurücksetzen & Archivieren"}
+          body={EN ? `Resets everything to ❌ and archives ${weekShort(wid)}.` : `Setzt alles auf ❌ und archiviert ${weekShort(wid)}.`}
+          extra={Object.keys(history).length > 0 && <div style={{ marginTop: 8, fontSize: 12, color: "var(--tx3)" }}>📚 {Object.keys(history).length} {EN ? "week(s) archived" : "Woche(n) archiviert"}</div>}
           onConfirm={handleReset}
           onCancel={() => dispatch({ type: "HIDE_MODAL", modal: "showReset" })}/>
       )}
-      {state.showSettings && <SettingsModal darkMode={darkMode} onDarkMode={setDarkMode} history={history} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showSettings" })}/>}
+      {state.showSettings && <SettingsModal darkMode={darkMode} onDarkMode={setDarkMode} lang={lang} onLangChange={setLang} history={history} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showSettings" })}/>}
       {state.showClaude  && <ClaudeModal recipes={recipes} ingState={ingState} sels={sels} onClose={() => dispatch({ type: "HIDE_MODAL", modal: "showClaude" })}/>}
 
       {/* Header */}
@@ -308,7 +319,7 @@ export default function App() {
         <div style={{ maxWidth: 660, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <h1 style={{ color: "var(--ht)", margin: 0, fontSize: 16, fontWeight: "normal" }}>🛒 Wocheneinkauf</h1>
+              <h1 style={{ color: "var(--ht)", margin: 0, fontSize: 16, fontWeight: "normal" }}>{EN ? "🛒 Weekly Shop" : "🛒 Wocheneinkauf"}</h1>
               {FLAGS.weekNav && (
                 <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 2 }}>
                   <button className="btn" onClick={() => navigateWeek(-1)}
@@ -349,16 +360,20 @@ export default function App() {
       </div>
 
       {!isOnline && (
-        <div style={{ background: "#555", color: "#fff", padding: "8px 16px", fontSize: 12, textAlign: "center", flexShrink: 0 }}>📴 Offline — Änderungen werden gespeichert sobald du wieder verbunden bist</div>
+        <div style={{ background: "#555", color: "#fff", padding: "8px 16px", fontSize: 12, textAlign: "center", flexShrink: 0 }}>
+          {EN ? "📴 Offline — changes will sync when reconnected" : "📴 Offline — Änderungen werden gespeichert sobald du wieder verbunden bist"}
+        </div>
       )}
       {state.showPWA && (
         <div style={{ background: "var(--ac)", color: "#fff", padding: "10px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <span style={{ flex: 1 }}>📲 Zum Startbildschirm: Teilen → "Zum Home-Bildschirm"</span>
+          <span style={{ flex: 1 }}>{EN ? "📲 Add to home screen: Share → 'Add to Home Screen'" : "📲 Zum Startbildschirm: Teilen → \"Zum Home-Bildschirm\""}</span>
           <button className="btn" onClick={() => dispatch({ type: "HIDE_MODAL", modal: "showPWA" })} style={{ color: "#fff", fontSize: 18, background: "none" }}>✕</button>
         </div>
       )}
       {sync === "error" && (
-        <div style={{ background: "var(--dan)", color: "#fff", padding: "8px 16px", fontSize: 12, textAlign: "center", flexShrink: 0 }}>❌ Firebase-Fehler — Datenbankregeln prüfen</div>
+        <div style={{ background: "var(--dan)", color: "#fff", padding: "8px 16px", fontSize: 12, textAlign: "center", flexShrink: 0 }}>
+          {EN ? "❌ Firebase error — check database rules" : "❌ Firebase-Fehler — Datenbankregeln prüfen"}
+        </div>
       )}
 
       {/* Content */}
@@ -366,7 +381,7 @@ export default function App() {
         {loading ? (
           FLAGS.skeletonLoading ? <SkeletonCards/> : (
             <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--tx3)" }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div><div>Lade Rezepte…</div>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div><div>{EN ? "Loading recipes…" : "Lade Rezepte…"}</div>
             </div>
           )
         ) : (
@@ -414,5 +429,6 @@ export default function App() {
         ))}
       </div>
     </div>
+    </LangContext.Provider>
   );
 }

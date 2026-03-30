@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PROTEINS } from '../constants.js';
 import { weekShort } from '../utils.js';
 import { haptic } from '../utils.js';
+import { useT } from '../LangContext.jsx';
 
 export function QtyBox({ value, placeholder, color, onChange }) {
   const [ed, setEd] = useState(false);
@@ -39,8 +40,9 @@ export function EditInline({ value, style, onSave }) {
 }
 
 export function ProteinTag({ type }) {
+  const t = useT();
   const p = PROTEINS[type]; if (!p) return null;
-  return <span className="ptag" style={{ background: p.color }}>{p.emoji} {p.label}</span>;
+  return <span className="ptag" style={{ background: p.color }}>{p.emoji} {t('protein_' + type)}</span>;
 }
 
 export function StarRating({ value, onChange, size = 16 }) {

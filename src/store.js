@@ -13,6 +13,7 @@ export const initialState = {
   pantryInventory: {},
   history: {},
   darkMode: "auto",
+  lang: "en",
   weekId: weekId(0),
   weekOffset: 0,
   // modals
@@ -38,6 +39,7 @@ export function appReducer(state, action) {
     case "SET_PANTRY_INV":  return { ...state, pantryInventory: action.v };
     case "SET_HISTORY":     return { ...state, history: action.v };
     case "SET_DARK_MODE":   return { ...state, darkMode: action.v };
+    case "SET_LANG":        return { ...state, lang: action.v };
     case "SET_WEEK":        return { ...state, weekOffset: action.offset, weekId: weekId(action.offset) };
     case "PATCH_ING": {
       const upd = { ...state.ingState[action.id], ...action.patch };

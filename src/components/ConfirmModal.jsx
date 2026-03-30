@@ -1,4 +1,7 @@
+import { useT } from '../LangContext.jsx';
+
 export default function ConfirmModal({ emoji, title, body, confirmLabel, confirmColor, extra, onConfirm, onCancel }) {
+  const t = useT();
   return (
     <div className="overlay" onClick={onCancel}>
       <div className="sheet sup" style={{ padding: 24 }} onClick={e => e.stopPropagation()}>
@@ -10,7 +13,7 @@ export default function ConfirmModal({ emoji, title, body, confirmLabel, confirm
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn" onClick={onCancel}
-            style={{ flex: 1, padding: 13, borderRadius: 12, border: "1.5px solid var(--bdr)", background: "var(--sur)", color: "var(--tx2)", fontSize: 14 }}>Abbrechen</button>
+            style={{ flex: 1, padding: 13, borderRadius: 12, border: "1.5px solid var(--bdr)", background: "var(--sur)", color: "var(--tx2)", fontSize: 14 }}>{t('confirm_cancel')}</button>
           <button className="btn" onClick={onConfirm}
             style={{ flex: 1, padding: 13, borderRadius: 12, background: confirmColor || "var(--dan)", color: "#fff", fontSize: 14, fontWeight: "bold" }}>{confirmLabel}</button>
         </div>

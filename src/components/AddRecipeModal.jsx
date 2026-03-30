@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { PROTEINS, AISLES_OPT, EMOJIS } from '../constants.js';
+import { useT } from '../LangContext.jsx';
 
 export default function AddRecipeModal({ onSave, onClose }) {
+  const t = useT();
   const [name,  setName]  = useState("");
   const [emoji, setEmoji] = useState("🍽️");
   const [time,  setTime]  = useState("25–35 Min");
@@ -32,11 +34,11 @@ export default function AddRecipeModal({ onSave, onClose }) {
     <div className="overlay" onClick={onClose}>
       <div className="sheet sup" onClick={e => e.stopPropagation()}>
         <div style={{ padding: "16px 18px 10px", borderBottom: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 8 }}>
-          <h2 style={{ fontWeight: "normal", fontSize: 17, color: "var(--tx)", flex: 1 }}>➕ Eigenes Rezept</h2>
+          <h2 style={{ fontWeight: "normal", fontSize: 17, color: "var(--tx)", flex: 1 }}>{t('add_recipe_title')}</h2>
           <button className="btn" onClick={onClose} style={{ fontSize: 22, color: "var(--tx3)", background: "none" }}>✕</button>
         </div>
         <div style={{ padding: "12px 18px 8px", borderBottom: "1px solid var(--bdr)", display: "flex", gap: 8 }}>
-          {["Basis", "Zutaten"].map((l, i) => (
+          {[t('tab_basics'), t('tab_ingredients_tab')].map((l, i) => (
             <button key={i} className="btn" onClick={() => setStep(i)}
               style={{ flex: 1, padding: "8px", borderRadius: 10, fontSize: 13, background: step === i ? "var(--ac)" : "var(--sur2)", color: step === i ? "#fff" : "var(--tx2)", border: `1px solid ${step === i ? "var(--ac)" : "var(--bdr)"}` }}>{l}</button>
           ))}
@@ -50,18 +52,18 @@ export default function AddRecipeModal({ onSave, onClose }) {
                     style={{ fontSize: 20, background: emoji === e ? "var(--acbg)" : "none", border: `1px solid ${emoji === e ? "var(--ac)" : "transparent"}`, borderRadius: 8, padding: "4px 6px" }}>{e}</button>
                 ))}
               </div>
-              <input placeholder="Rezeptname *" value={name} onChange={e => setName(e.target.value)}
+              <input placeholder={t('name_placeholder')} value={name} onChange={e => setName(e.target.value)}
                 style={{ padding: "10px 14px", fontSize: 14, borderRadius: 10, width: "100%" }}/>
               <div style={{ display: "flex", gap: 8 }}>
                 <select value={time} onChange={e => setTime(e.target.value)} style={{ flex: 1, padding: "10px 10px", fontSize: 13, borderRadius: 10 }}>
-                  {["10–20 Min","15–25 Min","20–30 Min","25–35 Min","30–40 Min","35–45 Min"].map(t => <option key={t}>{t}</option>)}
+                  {["10–20 Min","15–25 Min","20–30 Min","25–35 Min","30–40 Min","35–45 Min"].map(tv => <option key={tv}>{tv}</option>)}
                 </select>
                 <select value={diff} onChange={e => setDiff(e.target.value)} style={{ flex: 1, padding: "10px 10px", fontSize: 13, borderRadius: 10 }}>
-                  <option>Einfach</option><option>Mittel</option>
+                  <option value="Einfach">{t('diff_easy')}</option><option value="Mittel">{t('diff_medium')}</option>
                 </select>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <input placeholder="kcal (optional)" type="number" value={kcal} onChange={e => setKcal(e.target.value)}
+                <input placeholder={t('kcal_placeholder')} type="number" value={kcal} onChange={e => setKcal(e.target.value)}
                   style={{ flex: 1, padding: "10px 10px", fontSize: 13, borderRadius: 10 }}/>
                 <select value={ptype} onChange={e => setPtype(e.target.value)} style={{ flex: 1, padding: "10px 10px", fontSize: 13, borderRadius: 10 }}>
                   {Object.entries(PROTEINS).map(([k, p]) => <option key={k} value={k}>{p.emoji} {p.label}</option>)}
@@ -71,10 +73,10 @@ export default function AddRecipeModal({ onSave, onClose }) {
           )}
           {step === 1 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 12, color: "var(--tx3)", marginBottom: 2 }}>Zutaten:</div>
+              <div style={{ fontSize: 12, color: "var(--tx3)", marginBottom: 2 }}>{t('tab_ingredients_tab')}:</div>
               {ings.map((ing, i) => (
                 <div key={i} style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                  <input placeholder="Zutat" value={ing.n} onChange={e => updIng(i, "n", e.target.value)}
+                  <input placeholder={t('ingredient_placeholder')} value={ing.n} onChange={e => updIng(i, "n", e.target.value)}
                     style={{ flex: 2, padding: "8px 10px", fontSize: 13, borderRadius: 8, minWidth: 0 }}/>
                   <input placeholder="300g" value={ing.a} onChange={e => updIng(i, "a", e.target.value)}
                     style={{ flex: "0 0 64px", padding: "8px 6px", fontSize: 13, borderRadius: 8, minWidth: 0 }}/>
@@ -89,15 +91,15 @@ export default function AddRecipeModal({ onSave, onClose }) {
                 </div>
               ))}
               <button className="btn" onClick={addIng}
-                style={{ padding: "8px", borderRadius: 10, background: "var(--sur2)", border: "1px solid var(--bdr)", color: "var(--tx2)", fontSize: 13 }}>+ Zutat hinzufügen</button>
+                style={{ padding: "8px", borderRadius: 10, background: "var(--sur2)", border: "1px solid var(--bdr)", color: "var(--tx2)", fontSize: 13 }}>{t('btn_add_ingredient')}</button>
             </div>
           )}
         </div>
         <div style={{ padding: "10px 18px 14px", borderTop: "1px solid var(--bdr)", display: "flex", gap: 8 }}>
           <button className="btn" onClick={onClose}
-            style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid var(--bdr)", background: "var(--sur)", color: "var(--tx2)", fontSize: 14 }}>Abbrechen</button>
+            style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid var(--bdr)", background: "var(--sur)", color: "var(--tx2)", fontSize: 14 }}>{t('btn_cancel')}</button>
           <button className="btn" onClick={handleSave}
-            style={{ flex: 1, padding: 12, borderRadius: 12, background: name.trim() ? "var(--ac)" : "#aaa", color: "#fff", fontSize: 14, fontWeight: "bold" }}>Speichern</button>
+            style={{ flex: 1, padding: 12, borderRadius: 12, background: name.trim() ? "var(--ac)" : "#aaa", color: "#fff", fontSize: 14, fontWeight: "bold" }}>{t('btn_save')}</button>
         </div>
       </div>
     </div>

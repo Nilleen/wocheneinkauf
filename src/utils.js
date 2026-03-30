@@ -63,35 +63,52 @@ export function normStr(s) {
 }
 
 // ── PRICE HELPERS ─────────────────────────────────────────────────────────
+// Fuzzy price lookup — exact match first, then substring match
+export function fuzzyPriceLookup(normName) {
+  if (REWE_PRICES[normName] != null) return { price: REWE_PRICES[normName], fuzzy: false };
+  for (const [k, v] of Object.entries(REWE_PRICES)) {
+    if (k.length > 3 && (normName.includes(k) || k.includes(normName)))
+      return { price: v, fuzzy: true };
+  }
+  return null;
+}
+
 // Estimates total ingredient cost (all ingredients, including pantry items).
-// servings: number of portions selected (recipes are based on 2 servings).
+// Returns: { total, perPortion, unknownNames, hasFuzzy }
 export function estimateRecipePrice(recipe, servings = 2) {
   const scale = (servings || 2) / 2;
-  let total = 0, unknown = false;
+  let total = 0;
+  const unknownNames = [];
+  let hasFuzzy = false;
 
-  // Main ingredients
   recipe.ingredients.forEach(ing => {
     const k = normIngName(ing.name);
-    const price = REWE_PRICES[k];
-    if (price != null) total += price * scale;
-    else unknown = true;
+    const match = fuzzyPriceLookup(k);
+    if (match) { total += match.price * scale; if (match.fuzzy) hasFuzzy = true; }
+    else unknownNames.push(ing.name);
   });
 
-  // Pantry items ("aus deiner Küche") — included at 20% of pack price
-  // since these are staples used in small amounts from existing stock.
+  // Pantry items at 20% of pack price (used in small amounts)
   (recipe.pantryItems || []).forEach(item => {
     const k = normIngName(item);
-    const price = REWE_PRICES[k];
-    if (price != null) total += price * 0.2 * scale;
-    // unknown pantry items are silently skipped (Wasser, etc.)
+    const match = fuzzyPriceLookup(k);
+    if (match) total += match.price * 0.2 * scale;
   });
 
-  return { total: Math.round(total * 100) / 100, unknown };
+  const rounded = Math.round(total * 100) / 100;
+  return {
+    total: rounded,
+    perPortion: Math.round((rounded / (servings || 2)) * 100) / 100,
+    unknownNames,
+    hasFuzzy,
+  };
 }
 export function formatPrice(recipe, servings = 2) {
-  const { total, unknown } = estimateRecipePrice(recipe, servings);
-  if (total === 0 && unknown) return "~?";
-  return `~€${total.toFixed(2)}${unknown ? "*" : ""}`;
+  const { total, perPortion, unknownNames, hasFuzzy } = estimateRecipePrice(recipe, servings);
+  const hasUnknown = unknownNames.length > 0;
+  if (total === 0 && hasUnknown) return "~?";
+  const flag = (hasUnknown || hasFuzzy) ? "*" : "";
+  return `~€${total.toFixed(2)}${flag} · €${perPortion.toFixed(2)}/P`;
 }
 
 // ── PARSE / SCALE / COMBINE AMOUNTS ──────────────────────────────────────

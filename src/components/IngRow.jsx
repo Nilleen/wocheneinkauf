@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { SE } from '../constants.js';
 import { needAmt, computeAutoStatus, haptic } from '../utils.js';
 import { QtyBox, EditInline } from './SmallComponents.jsx';
+import { useT } from '../LangContext.jsx';
 
 export default function IngRow({ ing, rkey, rcolor, ingState, sels, updateIng, setIngStatus, saveIngName }) {
+  const t = useT();
   const [showNote, setShowNote] = useState(false);
   const s    = ingState[ing.id] || {};
   const need = needAmt(ing, rkey, sels);
@@ -36,13 +38,13 @@ export default function IngRow({ ing, rkey, rcolor, ingState, sels, updateIng, s
         </button>
       </div>
       {(showNote || s.note) && (
-        <textarea className="note-ta" placeholder="Notiz…" value={s.note || ""} rows={2}
+        <textarea className="note-ta" placeholder={t('ingrow_note_placeholder')} value={s.note || ""} rows={2}
           onChange={e => updateIng(ing.id, "note", e.target.value)}/>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
-        <span style={{ fontSize: 10, color: "var(--tx3)" }}>Benötigt</span>
+        <span style={{ fontSize: 10, color: "var(--tx3)" }}>{t('ingrow_needed')}</span>
         <div className="qb has" style={{ borderColor: rcolor, cursor: "default", fontSize: 12 }}>{need}</div>
-        <span style={{ fontSize: 10, color: "var(--tx3)" }}>Vorhanden</span>
+        <span style={{ fontSize: 10, color: "var(--tx3)" }}>{t('ingrow_have')}</span>
         <QtyBox value={s.have || ""} placeholder="—" color={rcolor} onChange={onHaveChange}/>
         <div style={{ display: "flex", gap: 3 }}>
           <button className={`stb${s.status === "none" ? " on" : ""}`} onClick={onNoneTap}

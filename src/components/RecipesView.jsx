@@ -2,10 +2,13 @@ import { useState, useMemo } from 'react';
 import { FLAGS, PROTEINS } from '../constants.js';
 import { getSel, detectProtein, weekShort, normIngName } from '../utils.js';
 import { FB } from '../firebase.js';
+import { useT, useLang } from '../LangContext.jsx';
 import RecipeCard from './RecipeCard.jsx';
 import QuickRatingSheet from './QuickRatingSheet.jsx';
 
 export default function RecipesView({ recipes, ingState, sels, profile, currentWeekId, pantryInventory, onToggleSel, onToggleFav, onServChange, onDayChange, onOpenRecipe }) {
+  const t    = useT();
+  const lang = useLang();
   const [q,            setQ]           = useState("");
   const [pFilter,      setPFilter]     = useState("all");
   const [diffFilter,   setDiffFilter]  = useState("all");
@@ -49,6 +52,7 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
       }
       if (!lq) return true;
       if (r.name.toLowerCase().includes(lq)) return true;
+      if ((lang === "en" && r.nameEN || "").toLowerCase().includes(lq)) return true;
       if (r.description.toLowerCase().includes(lq)) return true;
       if (r.ingredients.some(i => i.name.toLowerCase().includes(lq))) return true;
       return false;
@@ -64,7 +68,7 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
       }
       return 0;
     });
-  }, [recipes, ingState, sels, profile, pantryInventory, q, pFilter, diffFilter, timeFilter, activeFilter, kcalFilter, sortBy, favOnly, pantryReady]);
+  }, [recipes, ingState, sels, profile, pantryInventory, q, pFilter, diffFilter, timeFilter, activeFilter, kcalFilter, sortBy, favOnly, pantryReady, lang]);
 
   const selectedCount = recipes.filter(r => getSel(sels, r.key).selected).length;
   const anyFilter = favOnly || pantryReady || pFilter !== "all" || diffFilter !== "all" || timeFilter !== "all" || kcalFilter !== "all" || activeFilter;
@@ -77,15 +81,15 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
           onSetNote={(k, v) => { FB.set(`${FB.favs()}/${k}/notes`, v); }}
           onClose={() => setLongPressRecipe(null)}/>
       )}
-      <input className="sbar" placeholder="🔍 Rezepte, Zutaten, Protein…" value={q} onChange={e => setQ(e.target.value)} style={{ marginBottom: 8 }}/>
+      <input className="sbar" placeholder={t('search_recipes')} value={q} onChange={e => setQ(e.target.value)} style={{ marginBottom: 8 }}/>
       <div style={{ marginBottom: 12 }}>
         <div className="fbar" style={{ gap: 6, paddingBottom: 8 }}>
-          <button className={`chip${favOnly ? " on" : ""}`} onClick={() => setFavOnly(f => !f)}>⭐ Favoriten</button>
-          <button className={`chip${pantryReady ? " on" : ""}`} onClick={() => setPantryReady(f => !f)}>🧺 Aus Vorrat</button>
+          <button className={`chip${favOnly ? " on" : ""}`} onClick={() => setFavOnly(f => !f)}>{t('filter_favourites')}</button>
+          <button className={`chip${pantryReady ? " on" : ""}`} onClick={() => setPantryReady(f => !f)}>{t('filter_pantry')}</button>
           <div style={{ width: 1, background: "var(--bdr)", flexShrink: 0, alignSelf: "stretch", margin: "4px 0" }}/>
-          {FLAGS.prepCookSplit && <button className={`chip${activeFilter ? " on" : ""}`} onClick={() => setActiveFilter(f => !f)}>⚡ Aktiv ≤20 Min</button>}
-          <button className={`chip${timeFilter === "25" ? " on" : ""}`} onClick={() => setTimeFilter(timeFilter === "25" ? "all" : "25")}>⚡ &lt;25 Min</button>
-          <button className={`chip${timeFilter === "35" ? " on" : ""}`} onClick={() => setTimeFilter(timeFilter === "35" ? "all" : "35")}>⏱ &lt;35 Min</button>
+          {FLAGS.prepCookSplit && <button className={`chip${activeFilter ? " on" : ""}`} onClick={() => setActiveFilter(f => !f)}>{t('filter_active')}</button>}
+          <button className={`chip${timeFilter === "25" ? " on" : ""}`} onClick={() => setTimeFilter(timeFilter === "25" ? "all" : "25")}>{t('filter_under25')}</button>
+          <button className={`chip${timeFilter === "35" ? " on" : ""}`} onClick={() => setTimeFilter(timeFilter === "35" ? "all" : "35")}>{t('filter_under35')}</button>
           <div style={{ width: 1, background: "var(--bdr)", flexShrink: 0, alignSelf: "stretch", margin: "4px 0" }}/>
           <button className={`chip${kcalFilter === "700" ? " on" : ""}`} onClick={() => setKcalFilter(kcalFilter === "700" ? "all" : "700")}>🔥 &lt;700</button>
           <button className={`chip${kcalFilter === "850" ? " on" : ""}`} onClick={() => setKcalFilter(kcalFilter === "850" ? "all" : "850")}>🔥 &lt;850</button>
@@ -94,41 +98,41 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
             <button key={k} className={`chip${pFilter === k ? " on" : ""}`}
               onClick={() => setPFilter(pFilter === k ? "all" : k)}
               style={pFilter === k ? { borderColor: p.color, background: p.color + "22", color: p.color } : {}}>
-              {p.emoji} {p.label}
+              {p.emoji} {t('protein_' + k)}
             </button>
           ))}
           <div style={{ width: 1, background: "var(--bdr)", flexShrink: 0, alignSelf: "stretch", margin: "4px 0" }}/>
-          <button className={`chip${diffFilter === "Einfach" ? " on" : ""}`} onClick={() => setDiffFilter(diffFilter === "Einfach" ? "all" : "Einfach")}>🟢 Einfach</button>
-          <button className={`chip${diffFilter === "Mittel"  ? " on" : ""}`} onClick={() => setDiffFilter(diffFilter === "Mittel"  ? "all" : "Mittel")}>🟡 Mittel</button>
+          <button className={`chip${diffFilter === "Einfach" ? " on" : ""}`} onClick={() => setDiffFilter(diffFilter === "Einfach" ? "all" : "Einfach")}>{t('difficulty_easy')}</button>
+          <button className={`chip${diffFilter === "Mittel"  ? " on" : ""}`} onClick={() => setDiffFilter(diffFilter === "Mittel"  ? "all" : "Mittel")}>{t('difficulty_medium')}</button>
           <div style={{ width: 1, background: "var(--bdr)", flexShrink: 0, alignSelf: "stretch", margin: "4px 0" }}/>
           <select value={sortBy} onChange={e => setSortBy(e.target.value)}
             style={{ padding: "5px 10px", borderRadius: 20, fontSize: 12, border: "1.5px solid var(--bdr)", color: "var(--tx)", flexShrink: 0, background: "var(--sur)" }}>
-            <option value="order">🔢 Standard</option>
-            <option value="stocked">✅ Vorrätig</option>
-            <option value="time">⏱ Zeit</option>
-            <option value="kcal">🔥 kcal</option>
-            <option value="rating">⭐ Bewertung</option>
+            <option value="order">{t('sort_default')}</option>
+            <option value="stocked">{t('sort_stocked')}</option>
+            <option value="time">{t('sort_time')}</option>
+            <option value="kcal">{t('sort_kcal')}</option>
+            <option value="rating">{t('sort_rating')}</option>
           </select>
         </div>
         {anyFilter && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
-            <span style={{ fontSize: 11, color: "var(--tx3)" }}>Aktiv:</span>
-            {favOnly      && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>⭐ Fav</span>}
-            {pantryReady  && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>🧺 Vorrat ≥70%</span>}
-            {activeFilter && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>⚡ Aktiv</span>}
-            {pFilter !== "all" && <span style={{ fontSize: 11, background: PROTEINS[pFilter].color + "22", color: PROTEINS[pFilter].color, padding: "2px 8px", borderRadius: 10 }}>{PROTEINS[pFilter].emoji} {PROTEINS[pFilter].label}</span>}
-            {diffFilter !== "all" && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{diffFilter}</span>}
+            <span style={{ fontSize: 11, color: "var(--tx3)" }}>{t('active_filters')}</span>
+            {favOnly      && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{t('tag_fav')}</span>}
+            {pantryReady  && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{t('tag_pantry')}</span>}
+            {activeFilter && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{t('tag_active')}</span>}
+            {pFilter !== "all" && <span style={{ fontSize: 11, background: PROTEINS[pFilter].color + "22", color: PROTEINS[pFilter].color, padding: "2px 8px", borderRadius: 10 }}>{PROTEINS[pFilter].emoji} {t('protein_' + pFilter)}</span>}
+            {diffFilter !== "all" && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{diffFilter === "Einfach" ? t('diff_easy') : t('diff_medium')}</span>}
             {timeFilter !== "all" && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{"<" + timeFilter + " Min"}</span>}
             {kcalFilter !== "all" && <span style={{ fontSize: 11, background: "var(--acbg)", color: "var(--ac)", padding: "2px 8px", borderRadius: 10 }}>{"<" + kcalFilter + " kcal"}</span>}
             <button className="btn"
               onClick={() => { setFavOnly(false); setPantryReady(false); setPFilter("all"); setDiffFilter("all"); setTimeFilter("all"); setKcalFilter("all"); setActiveFilter(false); }}
-              style={{ fontSize: 11, color: "var(--dan)", background: "none", padding: "2px 4px", marginLeft: "auto" }}>× Alles zurücksetzen</button>
+              style={{ fontSize: 11, color: "var(--dan)", background: "none", padding: "2px 4px", marginLeft: "auto" }}>{t('btn_clear_filters')}</button>
           </div>
         )}
       </div>
       {selectedCount > 0 && (
         <div style={{ fontSize: 12, color: "var(--ac)", marginBottom: 10, padding: "6px 12px", background: "var(--acbg)", borderRadius: 8 }}>
-          ✅ {selectedCount} Rezept{selectedCount > 1 ? "e" : ""} ausgewählt für <strong>{weekShort(currentWeekId)}</strong>
+          ✅ {t('recipes_selected', { count: selectedCount, s: selectedCount > 1 ? (lang === "en" ? "s" : "e") : "", week: weekShort(currentWeekId) })}
         </div>
       )}
       {filtered.map(recipe => (
@@ -140,7 +144,7 @@ export default function RecipesView({ recipes, ingState, sels, profile, currentW
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--tx3)" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-          <div>Keine Rezepte gefunden.</div>
+          <div>{t('no_recipes_found')}</div>
         </div>
       )}
     </div>
