@@ -6,13 +6,27 @@ import { useT, useLang } from '../LangContext.jsx';
 import SwipeItem from './SwipeItem.jsx';
 import { combineAmts } from '../utils.js';
 
-export default function ShoppingView({ recipes, ingState, sels, onShare, setIngStatus, pantryInventory, onUpdatePantryInv, ingDB = {} }) {
+export default function ShoppingView({ recipes, ingState, sels, onShare, setIngStatus, pantryInventory, onUpdatePantryInv, ingDB = {}, weekId }) {
   const t    = useT();
   const lang = useLang();
   const [sv,           setSv]          = useState("combined");
   const [q,            setQ]           = useState("");
-  const [checkedIds,   setCheckedIds]  = useState({});
+  const [checkedIds,   setCheckedIdsRaw] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('shoppingChecked') || 'null');
+      if (saved?.weekId === weekId) return saved.items;
+    } catch {}
+    return {};
+  });
   const [hideChecked,  setHideChecked] = useState(false);
+
+  const setCheckedIds = (updater) => {
+    setCheckedIdsRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      try { sessionStorage.setItem('shoppingChecked', JSON.stringify({ weekId, items: next })); } catch {}
+      return next;
+    });
+  };
   const lq = q.toLowerCase();
   const selRecipes = recipes.filter(r => getSel(sels, r.key).selected);
 

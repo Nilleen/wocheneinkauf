@@ -19,11 +19,11 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
         const aliased = ING_ALIASES[raw];
         const k = aliased ? normIngName(aliased) : raw;
         const displayName = aliased || ing.name;
-        if (!map[k]) { map[k] = { id: stateId, ids: [stateId], name: displayName, color: r.color, recipes: [r.name], aisle: ing.aisle || "other", needAmt: ing.amount }; }
+        if (!map[k]) { map[k] = { id: stateId, key: k, ids: [stateId], name: displayName, color: r.color, recipes: [r.name], aisle: ing.aisle || "other", needAmt: ing.amount }; }
         else { if (!map[k].ids.includes(stateId)) map[k].ids.push(stateId); if (!map[k].recipes.includes(r.name)) map[k].recipes.push(r.name); }
       });
     });
-    return Object.values(map).filter(i => !lq || i.name.toLowerCase().includes(lq)).sort((a, b) => a.name.localeCompare(b.name));
+    return Object.entries(map).map(([mapKey, v]) => ({ ...v, mapKey })).filter(i => !lq || i.name.toLowerCase().includes(lq)).sort((a, b) => a.name.localeCompare(b.name));
   }, [recipes, lq, ingDB]);
 
   const custom     = useMemo(() => Object.entries(customPantry || {}).filter(([, v]) => !lq || v.name.toLowerCase().includes(lq)), [customPantry, lq]);
@@ -153,14 +153,14 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
       {stocked.length > 0 && (
         <div className="card" style={{ marginBottom: 10 }}>
           <div style={{ padding: "8px 14px", background: "var(--acbg)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--ac)", letterSpacing: .5, textTransform: "uppercase" }}>{t('section_stocked', { count: stocked.length })}</div>
-          {stocked.map((item, i) => <div key={item.id} style={{ borderBottom: i < stocked.length - 1 ? "1px solid var(--bdr2)" : "none" }}><ItemRow item={item}/></div>)}
+          {stocked.map((item, i) => <div key={item.mapKey} style={{ borderBottom: i < stocked.length - 1 ? "1px solid var(--bdr2)" : "none" }}><ItemRow item={item}/></div>)}
         </div>
       )}
 
       {notStocked.length > 0 && (
         <div className="card">
           <div style={{ padding: "8px 14px", background: "var(--sur2)", borderBottom: "1px solid var(--bdr)", fontSize: 11, fontWeight: "bold", color: "var(--tx2)", letterSpacing: .5, textTransform: "uppercase" }}>{t('section_not_stocked', { count: notStocked.length })}</div>
-          {notStocked.map((item, i) => <div key={item.id} style={{ borderBottom: i < notStocked.length - 1 ? "1px solid var(--bdr2)" : "none" }}><ItemRow item={item}/></div>)}
+          {notStocked.map((item, i) => <div key={item.mapKey} style={{ borderBottom: i < notStocked.length - 1 ? "1px solid var(--bdr2)" : "none" }}><ItemRow item={item}/></div>)}
         </div>
       )}
       {allItems.length === 0 && q && <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--tx3)" }}>{t('no_items')}</div>}

@@ -479,7 +479,7 @@ function AppContent({ authState }) {
               <ShoppingView recipes={recipes} ingState={ingState} sels={sels}
                 onShare={handleShare} setIngStatus={setIngStatus} pantryInventory={pantryInventory}
                 onUpdatePantryInv={guardWrite((k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`))}
-                ingDB={ingDB}/>
+                ingDB={ingDB} weekId={wid}/>
 
             )}
             {state.view === "pantry" && (
