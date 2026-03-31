@@ -1,5 +1,13 @@
 # Wocheneinkauf (Weekly Meal Prep App)
 
+<table align="center">
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/4cceb53e-764f-424b-a5c1-195721b87d6c" width="250" /></td>
+    <td><img src="https://github.com/user-attachments/assets/2d9f1a17-2749-4593-84ed-1b030483925f" width="250" /></td>
+    <td><img src="https://github.com/user-attachments/assets/d1afe0d6-81b3-4ecf-8453-245dbc391c65" width="250" /></td>
+  </tr>
+</table>
+
 ---
 
 ## What This App Does
