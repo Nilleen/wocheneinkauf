@@ -1,6 +1,6 @@
-CLAUDE.md — Wocheneinkauf (Weekly Meal Prep App)
+Weekly Meal Prep App
 
-Complete onboarding guide for a fresh Claude Code instance. Read this in full before making any changes.
+
 What This App Does
 
 Wocheneinkauf ("Weekly Shopping" in German) is a mobile-first Progressive Web App for weekly meal planning and grocery shopping. It is used by a household (currently one family) to:
@@ -15,6 +15,7 @@ Wocheneinkauf ("Weekly Shopping" in German) is a mobile-first Progressive Web Ap
     Share the household plan between multiple users in real-time
 
 The app is in German by default, with English toggle. The target store is REWE (German supermarket chain). The primary users are a couple who use the same household code to sync their shopping in real time.
+
 Tech Stack
 Layer 	Technology
 Frontend framework 	React 18 (JSX, no TypeScript)
