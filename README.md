@@ -1,5 +1,5 @@
 # Wocheneinkauf (Weekly Meal Prep App)
-
+https://mealprepwiki.netlify.app/
 <table align="center">
   <tr>
     <td><img src="https://github.com/user-attachments/assets/4cceb53e-764f-424b-a5c1-195721b87d6c" width="250" /></td>
