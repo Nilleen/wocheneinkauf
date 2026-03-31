@@ -1,4 +1,4 @@
-# CLAUDE.md — Wocheneinkauf (Weekly Meal Prep App)
+# Wocheneinkauf (Weekly Meal Prep App)
 
 ---
 
