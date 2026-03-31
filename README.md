@@ -1,40 +1,32 @@
-# 🥗 Wocheneinkauf — Weekly Meal Prep App
+# Wocheneinkauf — Weekly Meal Prep App
 
 A mobile-first Progressive Web App for weekly meal planning and grocery shopping, built for a real household and used weekly.
 
 **Live app:** [mealprepwiki.netlify.app](https://mealprepwiki.netlify.app)
 
+<table align="center">
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/4cceb53e-764f-424b-a5c1-195721b87d6c" width="250" /></td>
+    <td><img src="https://github.com/user-attachments/assets/2d9f1a17-2749-4593-84ed-1b030483925f" width="250" /></td>
+    <td><img src="https://github.com/user-attachments/assets/d1afe0d6-81b3-4ecf-8453-245dbc391c65" width="250" /></td>
+  </tr>
+</table>
+
 ---
 
 ## What it does
 
-Plan your meals for the week, generate a grouped shopping list automatically, and track what's already in your pantry — all synced in real time between household members.
+**Wocheneinkauf** ("Weekly Shopping" in German) is used by a household to plan and shop for the week:
 
 - Browse and select recipes for the week with servings and day assignments
-- Auto-generate a shopping list grouped by supermarket aisle
-- Check off items while shopping — pantry inventory updates automatically
-- Track what you have at home and mark recipes as cooked (deducts pantry stock)
-- Shared in real time between household members via a join code
+- Auto-generate a shopping list from selected recipes, grouped by supermarket aisle
+- Track pantry inventory — check off items while shopping and stock updates automatically
+- Mark recipes as cooked, which deducts the correct scaled quantities from pantry
+- Estimate grocery costs based on REWE supermarket prices
+- Share the plan in real time between household members via a join code
 - Full English / German language toggle
+- Archive past weeks for history
 - Works offline and is installable as a PWA
-
----
-
-## Screenshots
-
-> 📱 Mobile-first — all screenshots at 390×844 (iPhone 14 size)
-
-### Recipe browser
-![Recipe browser](docs/screenshots/recipes.png)
-
-### Shopping list
-![Shopping list grouped by aisle](docs/screenshots/shopping.png)
-
-### Pantry inventory
-![Pantry inventory with inline quantity editing](docs/screenshots/pantry.png)
-
-### Week overview
-![Week overview with selected recipes](docs/screenshots/week.png)
 
 ---
 
@@ -42,13 +34,13 @@ Plan your meals for the week, generate a grouped shopping list automatically, an
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 (JSX) + Vite 5 |
-| State | `useReducer` + `useContext` — no Redux |
-| Database & Auth | Firebase Realtime Database + Firebase Auth |
+| Frontend | React 18 (JSX, no TypeScript) + Vite 5 |
+| State | `useReducer` + `useContext` — no Redux/Zustand |
+| Database & Auth | Firebase Realtime Database + Firebase Auth (SDK v10 modular) |
 | Hosting | Netlify (auto-deploy on push to `master`) |
 | PWA | Service worker + Web App Manifest |
-| Styling | Inline styles + CSS variables (no Tailwind) |
-| i18n | Custom EN/DE translation system |
+| Styling | Inline styles + CSS variables — no Tailwind, no CSS modules |
+| i18n | Custom flat key-value system with `useT()` hook |
 
 ---
 
@@ -58,17 +50,17 @@ Plan your meals for the week, generate a grouped shopping list automatically, an
 - **Ingredient intelligence** — compound ingredients (e.g. "Basil / Oregano") are split into separate shopping items; aliases merge duplicates (e.g. "Balsamic-Crème" and "Balsamicocreme" become one pantry entry)
 - **Smart pantry deduction** — marking a recipe as cooked automatically subtracts the correct scaled quantities from pantry inventory
 - **Shopping list persistence** — checked items survive tab navigation within a session; auto-clear on new week
-- **Price estimation** — REWE supermarket price estimates with per-portion breakdown, using proportional package-size calculations
+- **Price estimation** — REWE price estimates with per-portion breakdown using proportional package-size calculations
 - **Offline-first PWA** — installable on phone, works without internet after first load
 
 ---
 
 ## Architecture highlights
 
-- Auth flows through `AuthContext` → `AppContent` split to avoid React hooks-after-early-returns violations
+- `App` / `AppContent` split prevents React hooks-after-early-returns violations that caused white screens on auth state transitions
 - All Firebase paths are household-scoped under `/households/{CODE}/data/...` for multi-tenant isolation
 - Single `useReducer` handles all app state; Firebase subscriptions dispatch into it
-- `guardWrite()` wrapper blocks guest users from any write operation with a toast, rather than checking auth in each handler individually
+- `guardWrite()` wrapper blocks guest users from any write operation with a toast notification, instead of checking auth in every handler
 
 ---
 
@@ -81,7 +73,7 @@ npm install
 npm run dev
 ```
 
-No `.env` file needed — Firebase config is intentionally public (security enforced by Firebase rules, not key secrecy).
+No `.env` file needed — Firebase config is intentionally public (security is enforced by Firebase rules, not key secrecy).
 
 ---
 
