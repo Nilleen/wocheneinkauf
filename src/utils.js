@@ -32,6 +32,7 @@ export function weekShort(wid) {
 // ── INGREDIENT NORMALISATION ──────────────────────────────────────────────
 export function normIngName(n) {
   const l = (n || "").toLowerCase()
+    .replace(/[éèê]/g, "e").replace(/[àâ]/g, "a") // strip French accents (crème→creme)
     .replace(/,?\s*bio\b/gi, "")
     .replace(/karotten-/g, "karotte-")
     .replace(/äpfel/g, "apfel")
@@ -39,8 +40,15 @@ export function normIngName(n) {
     .replace(/zwiebeln\b/g, "zwiebel")
     .replace(/karotten\b/g, "karotte")
     .replace(/kartoffeln\b/g, "kartoffel")
+    .replace(/schalotten\b/g, "schalotte")
+    .replace(/champignons\b/g, "champignon")
     .replace(/\s+/g, " ").trim();
   return l;
+}
+export function canonIngKey(name) {
+  const norm = normIngName(name);
+  const aliased = ING_ALIASES[norm];
+  return aliased ? normIngName(aliased) : norm;
 }
 export function normShop(n) {
   const l = (n || "").toLowerCase().trim();
@@ -54,7 +62,7 @@ export function expandIngredient(ing, ingDB) {
   const splits = splitIngredientName(ing.name, ingDB || null)
     || (() => { const l = (ing.name || "").toLowerCase().trim(); return ING_SPLITS[l] || null; })();
   if (splits) {
-    return splits.map((t, i) => ({ ...ing, id: `${ing.id}_x${i}`, name: t, _fromSplit: ing.id }));
+    return splits.map((t, i) => ({ ...ing, id: `${ing.id}_x${i}`, name: t, amount: scaleAmt(ing.amount, 1 / splits.length), _fromSplit: ing.id }));
   }
   return [ing];
 }

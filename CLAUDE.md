@@ -158,18 +158,15 @@ App loads
 
 - **Site**: mealprepwik (on Netlify)
 - **Repo**: `Nilleen/wocheneinkauf` on GitHub
-- **Branch**: `master` → auto-deploys to production on every merge
+- **Branch**: `master` → auto-deploys to production on every push
 - **Build command**: `npm install && npm run build`
 - **Publish dir**: `dist`
 - **Node version**: 20
 - **Secrets scanner**: disabled (`SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"`) because Firebase API keys look like secrets but are intentionally public
 
 ### Deploy Workflow
-1. All development happens on branch `claude/thirsty-kapitsa` (or a new branch per session)
-2. Changes are committed and pushed to that branch
-3. User creates a PR on GitHub: `https://github.com/Nilleen/wocheneinkauf/compare/master...claude/thirsty-kapitsa`
-4. User merges the PR → Netlify auto-deploys
-5. The `gh` CLI is NOT available in this environment — use the GitHub URL above to create PRs
+1. Work directly on `master` — no feature branches or PRs
+2. Commit changes and push to `master` → Netlify auto-deploys
 
 ---
 
@@ -403,15 +400,9 @@ npm run build
 No `.env` file is needed. Firebase config is in `src/firebase.js`.
 
 ### Branch Strategy
-- `master` — production branch, auto-deploys to Netlify
-- `claude/thirsty-kapitsa` — current development branch (may differ per session)
-- Always work on a feature branch and PR into master
-
-### Making a PR (gh CLI not available)
-Open this URL in a browser:
-```
-https://github.com/Nilleen/wocheneinkauf/compare/master...YOUR_BRANCH_NAME
-```
+- **Work directly on `master`** — every push auto-deploys to Netlify production.
+- No feature branches, no PRs needed.
+- Commit directly to `master` and push. Netlify picks it up automatically.
 
 ---
 

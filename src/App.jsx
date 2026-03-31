@@ -478,7 +478,8 @@ function AppContent({ authState }) {
             {state.view === "shopping" && (
               <ShoppingView recipes={recipes} ingState={ingState} sels={sels}
                 onShare={handleShare} setIngStatus={setIngStatus} pantryInventory={pantryInventory}
-                onUpdatePantryInv={guardWrite((k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`))}/>
+                onUpdatePantryInv={guardWrite((k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`))}
+                ingDB={ingDB}/>
 
             )}
             {state.view === "pantry" && (
@@ -486,7 +487,8 @@ function AppContent({ authState }) {
                 pantryInventory={pantryInventory} updateIng={updateIng} setIngStatus={setIngStatus}
                 onAdd={guardWrite((id, d) => FB.set(`${FB.pantryCustom()}/${id}`, d))}
                 onRemove={guardWrite(id => FB.remove(`${FB.pantryCustom()}/${id}`))}
-                onUpdatePantryInv={guardWrite((k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`))}/>
+                onUpdatePantryInv={guardWrite((k, v) => v ? FB.set(`${FB.pantryInv()}/${k}`, v) : FB.remove(`${FB.pantryInv()}/${k}`))}
+                ingDB={ingDB}/>
             )}
           </>
         )}

@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { normIngName, haptic } from '../utils.js';
+import { normIngName, haptic, expandIngredient } from '../utils.js';
+import { ING_ALIASES } from '../constants.js';
 import { useT } from '../LangContext.jsx';
 import AddPantryModal from './AddPantryModal.jsx';
 
-export default function PantryView({ recipes, ingState, customPantry, pantryInventory, onAdd, onRemove, updateIng, setIngStatus, onUpdatePantryInv }) {
+export default function PantryView({ recipes, ingState, customPantry, pantryInventory, onAdd, onRemove, updateIng, setIngStatus, onUpdatePantryInv, ingDB = {} }) {
   const t = useT();
   const [q,       setQ]       = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -12,14 +13,18 @@ export default function PantryView({ recipes, ingState, customPantry, pantryInve
   const allItems = useMemo(() => {
     const map = {};
     recipes.forEach(r => {
-      r.ingredients.forEach(ing => {
-        const k = normIngName(ing.name);
-        if (!map[k]) { map[k] = { id: ing.id, ids: [ing.id], name: ing.name, color: r.color, recipes: [r.name], aisle: ing.aisle || "other", needAmt: ing.amount }; }
-        else { if (!map[k].ids.includes(ing.id)) map[k].ids.push(ing.id); if (!map[k].recipes.includes(r.name)) map[k].recipes.push(r.name); }
+      r.ingredients.flatMap(ing => expandIngredient(ing, ingDB)).forEach(ing => {
+        const stateId = ing._fromSplit || ing.id;
+        const raw = normIngName(ing.name);
+        const aliased = ING_ALIASES[raw];
+        const k = aliased ? normIngName(aliased) : raw;
+        const displayName = aliased || ing.name;
+        if (!map[k]) { map[k] = { id: stateId, ids: [stateId], name: displayName, color: r.color, recipes: [r.name], aisle: ing.aisle || "other", needAmt: ing.amount }; }
+        else { if (!map[k].ids.includes(stateId)) map[k].ids.push(stateId); if (!map[k].recipes.includes(r.name)) map[k].recipes.push(r.name); }
       });
     });
     return Object.values(map).filter(i => !lq || i.name.toLowerCase().includes(lq)).sort((a, b) => a.name.localeCompare(b.name));
-  }, [recipes, lq]);
+  }, [recipes, lq, ingDB]);
 
   const custom     = useMemo(() => Object.entries(customPantry || {}).filter(([, v]) => !lq || v.name.toLowerCase().includes(lq)), [customPantry, lq]);
   const stocked    = allItems.filter(i => { const s = ingState[i.id] || {}; return s.status === "full" || s.status === "partial"; });

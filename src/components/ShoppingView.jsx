@@ -6,7 +6,7 @@ import { useT, useLang } from '../LangContext.jsx';
 import SwipeItem from './SwipeItem.jsx';
 import { combineAmts } from '../utils.js';
 
-export default function ShoppingView({ recipes, ingState, sels, onShare, setIngStatus, pantryInventory, onUpdatePantryInv }) {
+export default function ShoppingView({ recipes, ingState, sels, onShare, setIngStatus, pantryInventory, onUpdatePantryInv, ingDB = {} }) {
   const t    = useT();
   const lang = useLang();
   const [sv,           setSv]          = useState("combined");
@@ -31,7 +31,7 @@ export default function ShoppingView({ recipes, ingState, sels, onShare, setIngS
     selRecipes.forEach(r => r.ingredients.forEach(ing => {
       if (ingState[ing.id]?.status === "full") return;
       const pInv = pantryInventory[normIngName(ing.name)]; if (pInv?.qty) return;
-      const expanded = expandIngredient(ing);
+      const expanded = expandIngredient(ing, ingDB);
       expanded.forEach(eing => {
         const display = ingDisplayName(eing.name);
         const key     = normIngName(eing.name);

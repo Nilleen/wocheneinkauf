@@ -5,8 +5,9 @@ import HistoryModal from './HistoryModal.jsx';
 
 export default function SettingsModal({ darkMode, onDarkMode, lang, onLangChange, history, authState, onClose }) {
   const t = useT();
-  const [showH,    setShowH]    = useState(false);
-  const [codeCopied, setCodeCopied] = useState(false);
+  const [showH,         setShowH]       = useState(false);
+  const [codeCopied,    setCodeCopied]  = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
 
   const isMember = authState?.status === "member";
   const isGuest  = authState?.status === "guest";
@@ -100,7 +101,19 @@ export default function SettingsModal({ darkMode, onDarkMode, lang, onLangChange
             style={{ padding: "12px 16px", borderRadius: 12, textAlign: "left", fontSize: 14, background: "var(--sur)", color: "var(--tx)", border: "1.5px solid var(--bdr)" }}>
             {t('btn_history', { count: Object.keys(history || {}).length })}
           </button>
-          <div style={{ fontSize: 10, color: "var(--tx3)", marginTop: 8 }}>{t('version')}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <div style={{ fontSize: 10, color: "var(--tx3)", flex: 1 }}>{t('version')}</div>
+            <button className="btn" onClick={() => setShowChangelog(v => !v)}
+              style={{ fontSize: 11, color: "var(--ac)", background: "none", padding: "2px 6px" }}>
+              {showChangelog ? "▲" : t('section_whats_new')}
+            </button>
+          </div>
+          {showChangelog && (
+            <div style={{ padding: "10px 14px", background: "var(--sur2)", borderRadius: 10, border: "1px solid var(--bdr)", marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: "var(--tx2)", lineHeight: 1.6, marginBottom: 6 }}>{t('changelog_v21')}</div>
+              <div style={{ fontSize: 11, color: "var(--tx3)", lineHeight: 1.5 }}>{t('changelog_v20')}</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

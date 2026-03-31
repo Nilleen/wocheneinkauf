@@ -49,13 +49,40 @@ export const SPICES = {
 
 // Ingredient alias dictionary for normalisation
 export const ING_ALIASES = {
-  "balsamic-crème":          "Balsamicocreme",
-  "balsamic crème":          "Balsamicocreme",
+  // Balsamic (accent stripped by normIngName, so keys use 'e' not 'è')
+  "balsamic-creme":          "Balsamicocreme",
+  "balsamic creme":          "Balsamicocreme",
+  // Cream / dairy
   "kochsahne leicht":        "Kochsahne",
   "sahne leicht":            "Kochsahne",
+  "schlagsahne":             "Sahne",
+  "creme fraiche":           "Crème fraîche",
+  "schmand":                 "Saure Sahne",
+  // Alliums
   "frühlingszwiebeln":       "Frühlingszwiebel",
   "knoblauch":               "Knoblauchzehe",
+  "rote zwiebeln":           "Rote Zwiebel",
+  "roten zwiebeln":          "Rote Zwiebel",
+  // Tomatoes
+  "cherrytomaten":           "Kirschtomaten",
+  "cocktailtomaten":         "Kirschtomaten",
+  "dosentomaten":            "Tomaten (Dose)",
+  "tomatenstücke":           "Tomaten (Dose)",
+  // Cheese
   "hartkäse (gerieben)":     "Hartkäse, gerieben",
+  "parmesankäse":            "Parmesan",
+  "parmesan, gerieben":      "Parmesan",
+  "mozzarella-kugel":        "Mozzarella",
+  // Chicken
+  "hähnchenbrust":           "Hähnchenfilet",
+  "hähnchenbrustfilet":      "Hähnchenfilet",
+  // Peppers
+  "paprika":                 "Paprikaschote",
+  "paprikaschoten":          "Paprikaschote",
+  // Oils
+  "olivenöl extra vergine":  "Olivenöl",
+  "rapsöl":                  "Pflanzenöl",
+  "sonnenblumenöl":          "Pflanzenöl",
 };
 
 // Split ingredients: source → [targets]
