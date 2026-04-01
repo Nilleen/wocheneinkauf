@@ -9,7 +9,7 @@
     "households": {
       "$code": {
         "meta": {
-          ".read":  "auth != null",
+          ".read":  "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous'",
           ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && root.child('householdMembers/' + auth.uid + '/code').val() === $code"
         },
         "members": {
@@ -19,7 +19,7 @@
           }
         },
         "data": {
-          ".read":  "auth != null",
+          ".read":  "auth != null && root.child('householdMembers/' + auth.uid + '/code').val() === $code",
           ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && root.child('householdMembers/' + auth.uid + '/code').val() === $code"
         }
       }

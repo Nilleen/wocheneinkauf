@@ -11,7 +11,7 @@ export default function AddPantryModal({ onAdd, onClose }) {
     <div className="overlay" onClick={onClose}>
       <div className="sheet sup" style={{ padding: 24 }} onClick={e => e.stopPropagation()}>
         <h2 style={{ fontWeight: "normal", fontSize: 18, color: "var(--tx)", marginBottom: 16 }}>{t('add_pantry_title')}</h2>
-        <input placeholder={t('pantry_name_placeholder')} value={name} onChange={e => setName(e.target.value)}
+        <input placeholder={t('pantry_name_placeholder')} value={name} onChange={e => setName(e.target.value)} maxLength={80}
           style={{ width: "100%", padding: "10px 14px", fontSize: 14, marginBottom: 10, borderRadius: 10 }}/>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <input placeholder={t('qty_placeholder')} value={qty} onChange={e => setQty(e.target.value)} type="number"

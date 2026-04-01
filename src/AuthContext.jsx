@@ -44,6 +44,7 @@ export function AuthProvider({ children }) {
     if (!user) return;
     const c = code.trim().toUpperCase();
     if (!c) throw new Error("Please enter a code.");
+    if (!/^[A-Z0-9]{2,20}$/.test(c)) throw new Error("Code must be 2–20 letters or numbers only.");
 
     const exists = await FB.householdExists(c);
 

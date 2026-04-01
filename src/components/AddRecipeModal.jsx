@@ -52,7 +52,7 @@ export default function AddRecipeModal({ onSave, onClose }) {
                     style={{ fontSize: 20, background: emoji === e ? "var(--acbg)" : "none", border: `1px solid ${emoji === e ? "var(--ac)" : "transparent"}`, borderRadius: 8, padding: "4px 6px" }}>{e}</button>
                 ))}
               </div>
-              <input placeholder={t('name_placeholder')} value={name} onChange={e => setName(e.target.value)}
+              <input placeholder={t('name_placeholder')} value={name} onChange={e => setName(e.target.value)} maxLength={80}
                 style={{ padding: "10px 14px", fontSize: 14, borderRadius: 10, width: "100%" }}/>
               <div style={{ display: "flex", gap: 8 }}>
                 <select value={time} onChange={e => setTime(e.target.value)} style={{ flex: 1, padding: "10px 10px", fontSize: 13, borderRadius: 10 }}>
@@ -76,7 +76,7 @@ export default function AddRecipeModal({ onSave, onClose }) {
               <div style={{ fontSize: 12, color: "var(--tx3)", marginBottom: 2 }}>{t('tab_ingredients_tab')}:</div>
               {ings.map((ing, i) => (
                 <div key={i} style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                  <input placeholder={t('ingredient_placeholder')} value={ing.n} onChange={e => updIng(i, "n", e.target.value)}
+                  <input placeholder={t('ingredient_placeholder')} value={ing.n} onChange={e => updIng(i, "n", e.target.value)} maxLength={60}
                     style={{ flex: 2, padding: "8px 10px", fontSize: 13, borderRadius: 8, minWidth: 0 }}/>
                   <div style={{ display: "flex", flex: "0 0 96px", minWidth: 0 }}>
                     <input type="number" placeholder="300" value={ing.an} onChange={e => updIng(i, "an", e.target.value)}
